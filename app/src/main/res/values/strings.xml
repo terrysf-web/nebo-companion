@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Nebo Companion</string>
+    <string name="headline">Nebo 메모를 일정으로</string>
+    <string name="description">Nebo에서 메모를 공유하거나 아래에 붙여 넣으세요. 날짜와 시간을 찾아 캘린더 일정으로 준비합니다.</string>
+    <string name="note_hint">예: 내일 오후 3시 팀 회의\n장소: 2층 회의실</string>
+    <string name="analyze">일정 인식</string>
+    <string name="add_calendar">Google Calendar에 추가</string>
+    <string name="no_event">날짜와 시간을 찾지 못했습니다. 예: “7월 20일 오후 2시 치과”</string>
+    <string name="event_ready">인식된 일정</string>
+    <string name="calendar_missing">일정을 받을 수 있는 캘린더 앱이 없습니다.</string>
+</resources>

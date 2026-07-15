@@ -1,0 +1,10 @@
+<resources>
+    <color name="navy">#17233C</color>
+    <color name="ink">#172033</color>
+    <color name="paper">#F7F5EF</color>
+    <color name="white">#FFFFFF</color>
+    <color name="accent">#356AE6</color>
+    <color name="muted">#667085</color>
+    <color name="success_bg">#EAF7EE</color>
+    <color name="success_text">#17663A</color>
+</resources>
