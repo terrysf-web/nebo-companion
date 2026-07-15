@@ -48,8 +48,8 @@ class MainActivity : Activity() {
     }
 
     private fun consumeSharedText(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_SEND || intent.type != "text/plain") return
-        val shared = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+        if (intent?.action != Intent.ACTION_SEND) return
+        val shared = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString().orEmpty()
         if (shared.isNotBlank()) {
             noteInput.setText(shared)
             analyze()
