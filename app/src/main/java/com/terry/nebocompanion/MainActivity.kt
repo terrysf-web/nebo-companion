@@ -114,7 +114,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        if (saved > 0) Toast.makeText(this, "$saved개 항목을 저장했습니다.", Toast.LENGTH_LONG).show()
+        if (saved > 0) Toast.makeText(this, "${saved}개 항목을 저장했습니다.", Toast.LENGTH_LONG).show()
     }
 
     private fun scheduleReminder(item: CaptureItem, whenAt: java.time.LocalDateTime) {
