@@ -30,6 +30,12 @@ class EventParserTest {
         assertEquals("2026-07-21T14:30", event.start.toString())
     }
 
+    @Test fun parsesNeboEnglishUsDate() {
+        val event = parser.parse("7/15/26 3PM Daily huddle", zone)
+        assertEquals("Daily huddle", event!!.title)
+        assertEquals("2026-07-15T15:00", event.start.toString())
+    }
+
     @Test fun rejectsTextWithoutDateAndTime() {
         assertEquals(null, parser.parse("아이디어를 나중에 정리하기", zone))
     }

@@ -21,6 +21,7 @@ data class ParsedEvent(
 class EventParser(private val clock: Clock = Clock.systemDefaultZone()) {
     private val koreanDate = Regex("(?:(\\d{4})년\\s*)?(\\d{1,2})월\\s*(\\d{1,2})일")
     private val isoDate = Regex("(\\d{4})[-./](\\d{1,2})[-./](\\d{1,2})")
+    private val usDate = Regex("(?<!\\d)(\\d{1,2})/(\\d{1,2})/(\\d{2}|\\d{4})(?!\\d)")
     private val shortDate = Regex("(?<!\\d)(\\d{1,2})[./](\\d{1,2})(?!\\d)")
     private val koreanTime = Regex("(?:(오전|오후)\\s*)?(\\d{1,2})시(?:\\s*(\\d{1,2})분)?")
     private val clockTime = Regex("(?<!\\d)(\\d{1,2}):(\\d{2})(?:\\s*(AM|PM))?", RegexOption.IGNORE_CASE)
@@ -57,6 +58,12 @@ class EventParser(private val clock: Clock = Clock.systemDefaultZone()) {
 
         isoDate.find(text)?.let {
             return validDate(it.groupValues[1].toInt(), it.groupValues[2].toInt(), it.groupValues[3].toInt())
+                ?.let { date -> ParsePart(date, listOf(it.range)) }
+        }
+        usDate.find(text)?.let {
+            val rawYear = it.groupValues[3].toInt()
+            val year = if (rawYear < 100) 2000 + rawYear else rawYear
+            return validDate(year, it.groupValues[1].toInt(), it.groupValues[2].toInt())
                 ?.let { date -> ParsePart(date, listOf(it.range)) }
         }
         koreanDate.find(text)?.let {
