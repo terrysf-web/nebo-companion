@@ -88,5 +88,15 @@
             android:textColor="@color/white"
             android:textSize="16sp"
             android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/calendarTargetView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:padding="6dp"
+            android:text="@string/calendar_target_unset"
+            android:textColor="@color/muted"
+            android:textSize="14sp" />
     </LinearLayout>
 </ScrollView>

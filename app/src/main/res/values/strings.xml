@@ -11,4 +11,12 @@
     <string name="calendar_permission">일정과 리마인더를 저장하려면 캘린더 권한이 필요합니다.</string>
     <string name="calendar_saved">일정과 리마인더를 저장했습니다.</string>
     <string name="calendar_save_failed">저장할 수 있는 캘린더를 찾지 못했습니다.</string>
+    <string name="ocr_running">손글씨 이미지를 읽는 중…</string>
+    <string name="ocr_empty">이미지에서 글자를 찾지 못했습니다. 글씨를 조금 더 크고 진하게 써보세요.</string>
+    <string name="ocr_failed">이미지 인식 실패: %1$s</string>
+    <string name="ocr_open_failed">공유된 파일을 열 수 없습니다 (%1$s). Nebo에서 이미지 형식으로 공유했는지 확인해주세요.</string>
+    <string name="choose_calendar">저장할 캘린더 선택</string>
+    <string name="calendar_target">저장 위치: %1$s (눌러서 변경)</string>
+    <string name="calendar_target_unset">저장할 캘린더: 아직 미선택 (눌러서 선택)</string>
+    <string name="calendar_fallback">캘린더 앱이 열립니다. 저장 버튼을 눌러 완료해주세요.</string>
 </resources>

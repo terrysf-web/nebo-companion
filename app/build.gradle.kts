@@ -11,8 +11,8 @@ android {
         applicationId = "com.terry.nebocompanion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.3.4"
+        versionCode = 6
+        versionName = "1.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,5 +35,6 @@ android {
 }
 
 dependencies {
+    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
     testImplementation("junit:junit:4.13.2")
 }
