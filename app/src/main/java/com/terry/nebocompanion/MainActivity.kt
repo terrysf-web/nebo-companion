@@ -1,6 +1,8 @@
 package com.terry.nebocompanion
 
 import android.app.Activity
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.Manifest
 import android.content.ContentValues
 import android.content.Intent
@@ -20,7 +22,10 @@ class MainActivity : Activity() {
     private lateinit var resultView: TextView
     private lateinit var calendarButton: Button
     private val parser = EventParser()
+    private val captureParser = CaptureParser()
     private var parsedEvent: ParsedEvent? = null
+    private var captureItems: List<CaptureItem> = emptyList()
+    private lateinit var taskStore: TaskStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,6 +34,7 @@ class MainActivity : Activity() {
         noteInput = findViewById(R.id.noteInput)
         resultView = findViewById(R.id.resultView)
         calendarButton = findViewById(R.id.calendarButton)
+        taskStore = TaskStore(this)
 
         findViewById<Button>(R.id.analyzeButton).setOnClickListener { analyze() }
         calendarButton.setOnClickListener { openCalendar() }
@@ -51,40 +57,73 @@ class MainActivity : Activity() {
     }
 
     private fun analyze() {
+        captureItems = captureParser.parse(noteInput.text.toString())
         parsedEvent = parser.parse(noteInput.text.toString())
-        val event = parsedEvent
         resultView.visibility = View.VISIBLE
-        if (event == null) {
+        if (captureItems.isEmpty()) {
             resultView.text = getString(R.string.no_event)
             calendarButton.isEnabled = false
         } else {
-            resultView.text = "${getString(R.string.event_ready)}\n\n${event.displayText()}"
+            resultView.text = captureItems.joinToString("\n\n", "인식된 항목 ${captureItems.size}개\n\n") { item ->
+                val label = when (item.type) { CaptureType.EVENT -> "일정"; CaptureType.TASK -> "할 일"; CaptureType.REMINDER -> "알림" }
+                val time = item.dateTime?.let { "\n$it" }.orEmpty()
+                "[$label] ${item.title}$time"
+            }
             calendarButton.isEnabled = true
         }
     }
 
     private fun openCalendar() {
-        val event = parsedEvent ?: return
-        if (checkSelfPermission(Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED ||
-            checkSelfPermission(Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(
-                arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR),
-                calendarPermissionRequest
-            )
+        if (captureItems.isEmpty()) return
+        val permissions = mutableListOf<String>()
+        if (captureItems.any { it.type == CaptureType.EVENT } &&
+            (checkSelfPermission(Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED ||
+             checkSelfPermission(Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED)) {
+            permissions += Manifest.permission.READ_CALENDAR
+            permissions += Manifest.permission.WRITE_CALENDAR
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 33 && captureItems.any { it.type == CaptureType.REMINDER } &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            permissions += Manifest.permission.POST_NOTIFICATIONS
+        }
+        if (permissions.isNotEmpty()) {
+            requestPermissions(permissions.toTypedArray(), calendarPermissionRequest)
             return
         }
-        saveToCalendar(event)
+        saveAll()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode != calendarPermissionRequest) return
         if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-            parsedEvent?.let { saveToCalendar(it) }
+            saveAll()
         } else {
             Toast.makeText(this, R.string.calendar_permission, Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun saveAll() {
+        var saved = 0
+        captureItems.forEach { item ->
+            when (item.type) {
+                CaptureType.TASK -> { taskStore.add(item); item.dateTime?.let { scheduleReminder(item, it) }; saved++ }
+                CaptureType.REMINDER -> { item.dateTime?.let { scheduleReminder(item, it.minusMinutes(item.reminderMinutes.toLong())) }; saved++ }
+                CaptureType.EVENT -> if (item.dateTime != null) {
+                    saveToCalendar(ParsedEvent(item.title, item.source, item.dateTime, item.dateTime.plusHours(1), item.reminderMinutes)); saved++
+                }
+            }
+        }
+        if (saved > 0) Toast.makeText(this, "$saved개 항목을 저장했습니다.", Toast.LENGTH_LONG).show()
+    }
+
+    private fun scheduleReminder(item: CaptureItem, whenAt: java.time.LocalDateTime) {
+        val trigger = whenAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        if (trigger <= System.currentTimeMillis()) return
+        val id = (System.currentTimeMillis() xor item.title.hashCode().toLong()).toInt()
+        val intent = Intent(this, ReminderReceiver::class.java).putExtra("title", item.title).putExtra("id", id)
+        val pending = PendingIntent.getBroadcast(this, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pending)
     }
 
     private fun saveToCalendar(event: ParsedEvent) {
