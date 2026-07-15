@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Nebo Companion</string>
     <string name="headline">손글씨를 실행 가능한 계획으로</string>
-    <string name="description">Nebo에서 인식한 손글씨를 공유하세요. 일정, 할 일과 알림으로 분류해 한 번에 저장합니다.</string>
+    <string name="description">노트 앱에서 텍스트를 복사한 뒤 이 앱을 열면 자동으로 가져옵니다. 공유(텍스트·이미지)도 지원하며, 일정·할 일·알림으로 분류해 한 번에 저장합니다.</string>
     <string name="note_hint">예: 내일 오후 3시 팀 회의\n장소: 2층 회의실</string>
     <string name="analyze">일정 인식</string>
     <string name="add_calendar">모든 항목 저장</string>
@@ -19,4 +19,5 @@
     <string name="calendar_target">저장 위치: %1$s (눌러서 변경)</string>
     <string name="calendar_target_unset">저장할 캘린더: 아직 미선택 (눌러서 선택)</string>
     <string name="calendar_fallback">캘린더 앱이 열립니다. 저장 버튼을 눌러 완료해주세요.</string>
+    <string name="clipboard_imported">복사한 텍스트를 자동으로 가져왔습니다.</string>
 </resources>

@@ -35,6 +35,7 @@ class MainActivity : Activity() {
     private val captureParser = CaptureParser()
     private var parsedEvent: ParsedEvent? = null
     private var captureItems: List<CaptureItem> = emptyList()
+    private var lastClipboard: String? = null
     private lateinit var taskStore: TaskStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,6 +60,19 @@ class MainActivity : Activity() {
         super.onNewIntent(intent)
         setIntent(intent)
         consumeShared(intent)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus || noteInput.text.isNotBlank()) return
+        val clipboard = getSystemService(android.content.ClipboardManager::class.java) ?: return
+        val text = clipboard.primaryClip?.takeIf { it.itemCount > 0 }
+            ?.getItemAt(0)?.coerceToText(this)?.toString().orEmpty().trim()
+        if (text.isBlank() || text == lastClipboard) return
+        lastClipboard = text
+        noteInput.setText(text)
+        analyze()
+        Toast.makeText(this, R.string.clipboard_imported, Toast.LENGTH_SHORT).show()
     }
 
     private fun consumeShared(intent: Intent?) {
