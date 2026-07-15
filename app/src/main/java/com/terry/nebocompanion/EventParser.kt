@@ -14,7 +14,8 @@ data class ParsedEvent(
     val title: String,
     val description: String,
     val start: LocalDateTime,
-    val end: LocalDateTime
+    val end: LocalDateTime,
+    val reminderMinutes: Int
 )
 
 class EventParser(private val clock: Clock = Clock.systemDefaultZone()) {
@@ -32,13 +33,15 @@ class EventParser(private val clock: Clock = Clock.systemDefaultZone()) {
         val dateResult = parseDate(source, today) ?: return null
         val timeResult = parseTime(source) ?: return null
         val start = LocalDateTime.of(dateResult.value, timeResult.value)
-        val consumed = dateResult.ranges + timeResult.ranges
+        val reminderResult = parseReminder(source)
+        val consumed = dateResult.ranges + timeResult.ranges + reminderResult.ranges
         val title = cleanTitle(source, consumed)
         return ParsedEvent(
             title = title.ifBlank { "Nebo 일정" },
             description = source,
             start = start,
-            end = start.plusHours(1)
+            end = start.plusHours(1),
+            reminderMinutes = reminderResult.value
         )
     }
 
@@ -91,6 +94,39 @@ class EventParser(private val clock: Clock = Clock.systemDefaultZone()) {
             return validTime(hour, 0)?.let { time -> ParsePart(time, listOf(it.range)) }
         }
         return null
+    }
+
+    private fun parseReminder(text: String): ParsePart<Int> {
+        val natural = listOf("하루" to 1440, "한\\s*시간" to 60, "반\\s*시간" to 30)
+            .mapNotNull { (word, minutes) ->
+                Regex("$word\\s*전(?:에)?(?:\\s*(?:알려줘|알림|리마인드))?").find(text)?.let { it to minutes }
+            }.firstOrNull()
+        if (natural != null) {
+            return ParsePart(natural.second, listOf(natural.first.range))
+        }
+        val pattern = Regex("(\\d+)\\s*(분|시간|일)\\s*전(?:에)?(?:\\s*(?:알려줘|알림|리마인드))?")
+        val match = pattern.find(text)
+        if (match != null) {
+            val amount = match.groupValues[1].toInt().coerceAtMost(30)
+            val minutes = when (match.groupValues[2]) {
+                "시간" -> amount * 60
+                "일" -> amount * 24 * 60
+                else -> amount
+            }
+            return ParsePart(minutes, listOf(match.range))
+        }
+        val english = Regex("(\\d+)\\s*(minutes?|hours?|days?)\\s+before", RegexOption.IGNORE_CASE).find(text)
+        if (english != null) {
+            val amount = english.groupValues[1].toInt().coerceAtMost(30)
+            val unit = english.groupValues[2].lowercase()
+            val minutes = when {
+                unit.startsWith("hour") -> amount * 60
+                unit.startsWith("day") -> amount * 24 * 60
+                else -> amount
+            }
+            return ParsePart(minutes, listOf(english.range))
+        }
+        return ParsePart(30, emptyList())
     }
 
     private fun parseEnglishMonthDate(text: String, today: LocalDate): ParsePart<LocalDate>? {
@@ -149,5 +185,10 @@ class EventParser(private val clock: Clock = Clock.systemDefaultZone()) {
 
 fun ParsedEvent.displayText(): String {
     val formatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 (E) a h:mm", Locale.KOREAN)
-    return "${title}\n${start.format(formatter)} · 1시간"
+    val reminder = when {
+        reminderMinutes % 1440 == 0 -> "${reminderMinutes / 1440}일 전 알림"
+        reminderMinutes % 60 == 0 -> "${reminderMinutes / 60}시간 전 알림"
+        else -> "${reminderMinutes}분 전 알림"
+    }
+    return "${title}\n${start.format(formatter)} · 1시간\n${reminder}"
 }

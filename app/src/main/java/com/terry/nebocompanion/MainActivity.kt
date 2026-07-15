@@ -1,8 +1,10 @@
 package com.terry.nebocompanion
 
 import android.app.Activity
-import android.content.ActivityNotFoundException
+import android.Manifest
+import android.content.ContentValues
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.CalendarContract
 import android.view.View
@@ -13,6 +15,7 @@ import android.widget.Toast
 import java.time.ZoneId
 
 class MainActivity : Activity() {
+    private val calendarPermissionRequest = 701
     private lateinit var noteInput: EditText
     private lateinit var resultView: TextView
     private lateinit var calendarButton: Button
@@ -62,18 +65,79 @@ class MainActivity : Activity() {
 
     private fun openCalendar() {
         val event = parsedEvent ?: return
+        if (checkSelfPermission(Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED ||
+            checkSelfPermission(Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR),
+                calendarPermissionRequest
+            )
+            return
+        }
+        saveToCalendar(event)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != calendarPermissionRequest) return
+        if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+            parsedEvent?.let { saveToCalendar(it) }
+        } else {
+            Toast.makeText(this, R.string.calendar_permission, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun saveToCalendar(event: ParsedEvent) {
         val zone = ZoneId.systemDefault()
-        val intent = Intent(Intent.ACTION_INSERT).apply {
-            data = CalendarContract.Events.CONTENT_URI
-            putExtra(CalendarContract.Events.TITLE, event.title)
-            putExtra(CalendarContract.Events.DESCRIPTION, event.description)
-            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, event.start.atZone(zone).toInstant().toEpochMilli())
-            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, event.end.atZone(zone).toInstant().toEpochMilli())
+        val calendarId = findWritableCalendarId()
+        if (calendarId == null) {
+            Toast.makeText(this, R.string.calendar_save_failed, Toast.LENGTH_LONG).show()
+            return
         }
-        try {
-            startActivity(intent)
-        } catch (_: ActivityNotFoundException) {
-            Toast.makeText(this, R.string.calendar_missing, Toast.LENGTH_LONG).show()
+        val values = ContentValues().apply {
+            put(CalendarContract.Events.CALENDAR_ID, calendarId)
+            put(CalendarContract.Events.TITLE, event.title)
+            put(CalendarContract.Events.DESCRIPTION, event.description)
+            put(CalendarContract.Events.DTSTART, event.start.atZone(zone).toInstant().toEpochMilli())
+            put(CalendarContract.Events.DTEND, event.end.atZone(zone).toInstant().toEpochMilli())
+            put(CalendarContract.Events.EVENT_TIMEZONE, zone.id)
+            put(CalendarContract.Events.HAS_ALARM, 1)
         }
+        val eventUri = contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
+        val eventId = eventUri?.lastPathSegment?.toLongOrNull()
+        if (eventId == null) {
+            Toast.makeText(this, R.string.calendar_save_failed, Toast.LENGTH_LONG).show()
+            return
+        }
+        val reminder = ContentValues().apply {
+            put(CalendarContract.Reminders.EVENT_ID, eventId)
+            put(CalendarContract.Reminders.MINUTES, event.reminderMinutes)
+            put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
+        }
+        contentResolver.insert(CalendarContract.Reminders.CONTENT_URI, reminder)
+        Toast.makeText(this, R.string.calendar_saved, Toast.LENGTH_LONG).show()
+    }
+
+    private fun findWritableCalendarId(): Long? {
+        val projection = arrayOf(
+            CalendarContract.Calendars._ID,
+            CalendarContract.Calendars.ACCOUNT_TYPE,
+            CalendarContract.Calendars.IS_PRIMARY
+        )
+        val selection = "${CalendarContract.Calendars.VISIBLE}=1 AND " +
+            "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL}>=?"
+        val args = arrayOf(CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR.toString())
+        contentResolver.query(CalendarContract.Calendars.CONTENT_URI, projection, selection, args, null)?.use { cursor ->
+            var fallback: Long? = null
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(0)
+                val accountType = cursor.getString(1).orEmpty()
+                val primary = cursor.getInt(2) == 1
+                if (fallback == null) fallback = id
+                if (accountType == "com.google" && primary) return id
+            }
+            return fallback
+        }
+        return null
     }
 }
