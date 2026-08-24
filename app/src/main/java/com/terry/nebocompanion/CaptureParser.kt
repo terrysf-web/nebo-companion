@@ -17,11 +17,12 @@ data class CaptureItem(
 class CaptureParser(private val clock: Clock = Clock.systemDefaultZone()) {
     private val eventParser = EventParser(clock)
 
-    // 모닝 브리핑을 Nebo 페이지에 붙여넣고 그 아래에 손으로 계획을 쓰면,
-    // 페이지 전체를 공유해도 구분선 위(이미 캘린더에 있는 참고용 내용)는 저장되지 않습니다.
+    // Paste a morning brief into a Nebo page and write the plan under it: the
+    // whole page can be shared, and everything above the divider — reference
+    // material already in the calendar — is left alone.
     private val dividerLine = Regex("^[-—–_=]{3,}$")
 
-    // 시간 눈금("06", "07")은 쓰라고 넣은 안내선이지 할 일이 아닙니다.
+    // Hour guides ("06", "07") are there to write against, not to-dos.
     private val guideLine = Regex("^\\d{1,2}$")
 
     fun parse(text: String, zoneId: ZoneId = ZoneId.systemDefault()): List<CaptureItem> {
@@ -54,5 +55,5 @@ class CaptureParser(private val clock: Clock = Clock.systemDefaultZone()) {
     private fun cleanTaskTitle(value: String) = value
         .replace(Regex("(?i)\\b(task|todo)\\b"), "")
         .replace(Regex("할[ ]?일|해야|까지"), "")
-        .replace(Regex("\\s+"), " ").trim().ifBlank { "Nebo 할 일" }
+        .replace(Regex("\\s+"), " ").trim().ifBlank { "Nebo to-do" }
 }

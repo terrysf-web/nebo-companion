@@ -120,10 +120,10 @@ class MainActivity : Activity() {
         (if (Build.VERSION.SDK_INT >= 33) intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
          else intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM))?.filterNotNull().orEmpty()
 
-    // ── 모닝 브리핑 ──────────────────────────────────────────────
-    // 브리핑 서비스가 만든 <오늘날짜>.txt 를 동기화 폴더에서 바로 엽니다.
-    // 폴더 접근은 사용자가 한 번 고른 것만 쓰므로 새 권한이 필요 없고,
-    // 앱은 여전히 인터넷 권한 없이 동작합니다.
+    // ── Morning brief ───────────────────────────────────────────
+    // Opens today's <date>.txt straight out of the synced folder. The folder is
+    // one the user picked, so this needs no new permission and the app still
+    // asks for no internet access.
 
     private fun briefFileName(): String = "${LocalDate.now()}.txt"
 
@@ -266,8 +266,15 @@ class MainActivity : Activity() {
             resultView.text = getString(R.string.no_event)
             calendarButton.isEnabled = false
         } else {
-            resultView.text = captureItems.joinToString("\n\n", "인식된 항목 ${captureItems.size}개\n\n") { item ->
-                val label = when (item.type) { CaptureType.EVENT -> "일정"; CaptureType.TASK -> "할 일"; CaptureType.REMINDER -> "알림" }
+            val header = getString(R.string.items_found, captureItems.size) + "\n\n"
+            resultView.text = captureItems.joinToString("\n\n", header) { item ->
+                val label = getString(
+                    when (item.type) {
+                        CaptureType.EVENT -> R.string.type_event
+                        CaptureType.TASK -> R.string.type_task
+                        CaptureType.REMINDER -> R.string.type_reminder
+                    }
+                )
                 val time = item.dateTime?.let { "\n$it" }.orEmpty()
                 "[$label] ${item.title}$time"
             }
@@ -393,9 +400,9 @@ class MainActivity : Activity() {
             }
         }
         val message = when {
-            eventsSaved > 0 && calendar != null -> "${saved}개 항목을 저장했습니다 (일정 → ${calendar.label})"
+            eventsSaved > 0 && calendar != null -> getString(R.string.saved_with_calendar, saved, calendar.label)
             fallbackLaunched -> getString(R.string.calendar_fallback)
-            saved > 0 -> "${saved}개 항목을 저장했습니다."
+            saved > 0 -> getString(R.string.saved_count, saved)
             else -> getString(R.string.calendar_save_failed)
         }
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
@@ -464,10 +471,12 @@ class MainActivity : Activity() {
                 val id = cursor.getLong(0)
                 val account = cursor.getString(2).orEmpty()
                 val accountType = cursor.getString(3).orEmpty()
-                val name = cursor.getString(1).orEmpty().ifBlank { account.ifBlank { "캘린더 $id" } }
+                val name = cursor.getString(1).orEmpty()
+                    .ifBlank { account.ifBlank { getString(R.string.calendar_unnamed, id.toString()) } }
                 val origin = when {
                     accountType == "com.google" -> "Google · $account"
-                    accountType == CalendarContract.ACCOUNT_TYPE_LOCAL || accountType.contains("local", ignoreCase = true) -> "기기 로컬"
+                    accountType == CalendarContract.ACCOUNT_TYPE_LOCAL ||
+                        accountType.contains("local", ignoreCase = true) -> getString(R.string.calendar_local)
                     else -> account
                 }
                 calendars += CalendarChoice(id, if (origin.isBlank() || origin == name) name else "$name ($origin)")

@@ -38,7 +38,7 @@ class EventParser(private val clock: Clock = Clock.systemDefaultZone()) {
         val consumed = dateResult.ranges + timeResult.ranges + reminderResult.ranges
         val title = cleanTitle(source, consumed)
         return ParsedEvent(
-            title = title.ifBlank { "Nebo 일정" },
+            title = title.ifBlank { "Nebo event" },
             description = source,
             start = start,
             end = start.plusHours(1),
