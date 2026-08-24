@@ -19,8 +19,10 @@ even when the upload fails.
 ## The Nebo loop
 
 1. Morning: tap **오늘 브리핑 열기** in Nebo Companion — it reads today's
-   `<date>.txt` straight out of the Nextcloud-synced folder you picked once.
-   (Or open `http://<ip>:9000` and tap **Copy for Nebo**.)
+   `<date>.txt` straight out of the folder you picked once. Pick the folder the
+   briefs actually sync into: `<NC_DIR>/briefs` (default `Morning/briefs`) in
+   the Nextcloud app's local copy — the app looks in that folder only, not in
+   sub-folders. (Or open `http://<ip>:9000` and tap **Copy for Nebo**.)
 2. Paste it into a Nebo page. The brief sits above a line of dashes; below it
    are hour guides and empty space.
 3. Write the day's plan **below the line**, by hand, in Nebo.
