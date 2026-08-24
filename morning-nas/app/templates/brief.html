@@ -7,7 +7,9 @@
     <div class="sub">{{ brief.generated_at.replace("T", " ")[:16] }}{% if brief.weather %} · {{ brief.weather }}{% endif %}</div>
   </div>
   <div class="btns">
-    <a class="btn" href="/brief/{{ brief.day }}.pdf">PDF for the tablet</a>
+    <button class="btn" type="button" onclick="copyNebo(this)">Copy for Nebo</button>
+    <a class="btn" href="/brief/{{ brief.day }}.txt">Text</a>
+    {% if cfg.brief_pdf %}<a class="btn" href="/brief/{{ brief.day }}.pdf">PDF</a>{% endif %}
     <a class="btn" href="/">All briefs</a>
   </div>
 </header>
@@ -74,6 +76,38 @@
 {% if brief.closing %}
 <p class="muted">{{ brief.closing }}</p>
 {% endif %}
+
+<div class="card">
+  <h2>For Nebo</h2>
+  <p class="muted">Copy this, paste it into a Nebo page, and write the day's plan
+    under the line. Share the page back to Nebo Companion — only what you wrote
+    below the line becomes events and tasks.</p>
+  <pre id="nebo">{{ nebo_text }}</pre>
+</div>
+<script>
+function copyNebo(button) {
+  var text = document.getElementById("nebo").textContent;
+  var done = function () {
+    var was = button.textContent;
+    button.textContent = "Copied";
+    setTimeout(function () { button.textContent = was; }, 1500);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done, selectInstead);
+  } else {
+    selectInstead();
+  }
+  function selectInstead() {
+    // http:// on the LAN has no clipboard API — select it so one long-press copies.
+    var range = document.createRange();
+    range.selectNodeContents(document.getElementById("nebo"));
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    try { document.execCommand("copy"); done(); } catch (e) { button.textContent = "Select all + copy"; }
+  }
+}
+</script>
 
 {% if brief.problems %}
 <div class="card warn">

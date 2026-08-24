@@ -1,19 +1,36 @@
 # Morning
 
-A brief every morning and a planner every month, on a machine that is always
-on, delivered to the tablet.
+A brief every morning on a machine that is always on, shaped to be written on
+by hand in Nebo and read back by the Nebo Companion app in this repository.
 
-- **06:00 daily** — reads your Google calendars, unread mail and tasks across
-  every account, adds the weather, has Claude turn it into a short brief, and
-  writes it as **HTML** (to read) and **PDF** (to write on).
-- **1st of each month** — builds next month's **planner PDF**: cover, year
-  overview, month grids, weekly spreads, a page per day, and a linked
-  meeting-note section. Every page is one tap from every other page.
-- Both land in Nextcloud, and both stay downloadable from `http://<ip>:9000`
-  even when the upload fails.
+**06:00 daily** — reads your Google calendars, unread mail and tasks across
+every account, adds the weather, has Claude turn it into a short brief, and
+writes it three ways:
 
-The PDFs are sized 5:3 landscape — a TCL NXTPAPER-class tablet screen — so a
-page fills the display and you write straight onto it.
+| File | For |
+|---|---|
+| `.txt` | pasting into a **Nebo page** — this is the one that closes the loop |
+| `.html` | reading on any screen, with a **Copy for Nebo** button |
+| `.pdf` | writing on directly, if you prefer a PDF app (`BRIEF_PDF=0` to skip) |
+
+All of them land in Nextcloud and stay downloadable from `http://<ip>:9000`
+even when the upload fails.
+
+## The Nebo loop
+
+1. Morning: open `http://<ip>:9000`, tap today's brief, tap **Copy for Nebo**
+   (or open the `.txt` from Nextcloud).
+2. Paste it into a Nebo page. The brief sits above a line of dashes; below it
+   are hour guides and empty space.
+3. Write the day's plan **below the line**, by hand, in Nebo.
+4. Convert to text and share the page to **Nebo Companion**. It reads back only
+   what is below the divider, so the brief itself never turns into duplicate
+   tasks, and the hour guides are ignored. Events go to Google Calendar,
+   to-dos to the app, reminders to the device.
+
+The divider is the contract between the two halves: `DIVIDER` in
+`app/nebotext.py` and `dividerLine` in `CaptureParser.kt`. Change one, change
+the other.
 
 ## What you need
 
@@ -61,9 +78,15 @@ setting to fix for each failure.
 - from outside → `tailscale serve --bg --set-path / http://<machine-ip>:9000`
 
 The page lists every brief and planner, with a **Run brief now** and a
-**Build planner** button.
+**Build planner** button. Each brief links to its Nebo text, and the brief page
+itself has a **Copy for Nebo** button.
 
-## Planner PDF
+## Planner PDF (optional)
+
+Nebo is a poor host for a hyperlinked planner — internal links only respond to
+a finger, not the stylus — so the monthly planner is **off by default**
+(`PLANNER_ENABLED=0`). It is still there for a PDF-first app such as Xodo,
+Noteshelf or Flexcil, where the tab navigation works as intended:
 
 ```bash
 # next month only
@@ -128,6 +151,8 @@ Everything lives in `.env` (see `.env.example`). The ones that matter most:
 | `OWM_API_KEY` | OpenWeatherMap; empty means no weather section |
 | `NC_URL` / `NC_USER` / `NC_PASS` | Nextcloud; `NC_UPLOAD=0` turns uploading off |
 | `LANG_OUT` | `en` or `ko` — language of the brief |
+| `BRIEF_PDF` | also write the write-on-it PDF of the brief (default on) |
+| `PLANNER_ENABLED` | build the planner PDF on the 1st (default off) |
 | `BRIEF_HOUR` / `BRIEF_MINUTE` | when the daily brief runs |
 | `PLANNER_PAGE` | `tablet` (5:3), `a4`, `a5` |
 | `PLANNER_MONTHS` | months per planner file for the scheduled monthly build; `--months` / `--through` override it for a one-off |

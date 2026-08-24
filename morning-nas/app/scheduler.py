@@ -49,21 +49,23 @@ def main() -> None:
         misfire_grace_time=3600,
         coalesce=True,
     )
-    scheduler.add_job(
-        lambda: _safely("planner", jobs.run_planner, cfg),
-        CronTrigger(
-            day=1, hour=cfg.planner_hour, minute=cfg.planner_minute, timezone=cfg.tz
-        ),
-        id="planner",
-        misfire_grace_time=6 * 3600,
-        coalesce=True,
-    )
+    if cfg.planner_enabled:
+        scheduler.add_job(
+            lambda: _safely("planner", jobs.run_planner, cfg),
+            CronTrigger(
+                day=1, hour=cfg.planner_hour, minute=cfg.planner_minute, timezone=cfg.tz
+            ),
+            id="planner",
+            misfire_grace_time=6 * 3600,
+            coalesce=True,
+        )
     scheduler.start()
 
-    log.info(
-        "brief at %02d:%02d daily, planner on the 1st at %02d:%02d (%s)",
-        cfg.brief_hour, cfg.brief_minute, cfg.planner_hour, cfg.planner_minute, cfg.tz_name,
-    )
+    log.info("brief at %02d:%02d daily (%s)", cfg.brief_hour, cfg.brief_minute, cfg.tz_name)
+    if cfg.planner_enabled:
+        log.info(
+            "planner on the 1st at %02d:%02d", cfg.planner_hour, cfg.planner_minute
+        )
     log.info("accounts: %s", ", ".join(cfg.accounts) or "(none)")
 
     if store.load(cfg, date.today()) is None:

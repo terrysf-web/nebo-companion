@@ -18,4 +18,36 @@ class CaptureParserTest {
         """.trimIndent(), zone)
         assertEquals(listOf(CaptureType.EVENT, CaptureType.TASK, CaptureType.REMINDER), items.map { it.type })
     }
+
+    @Test fun readsOnlyWhatIsWrittenBelowTheDivider() {
+        val items = parser.parse("""
+            MONDAY, JULY 20
+            PRIORITIES
+            1. Finish the Q3 deck
+            UNREAD
+            - Jisoo: vendor contract
+            ------------------------------
+            내일 오후 3시 팀 회의
+        """.trimIndent(), zone)
+        assertEquals(listOf(CaptureType.EVENT), items.map { it.type })
+    }
+
+    @Test fun ignoresHourGuidesUnderTheDivider() {
+        val items = parser.parse("""
+            ------------------------------
+            06
+            07
+            □ 금요일까지 보고서 제출
+            22
+        """.trimIndent(), zone)
+        assertEquals(listOf(CaptureType.TASK), items.map { it.type })
+    }
+
+    @Test fun keepsParsingEverythingWhenThereIsNoDivider() {
+        val items = parser.parse("""
+            내일 오후 3시 팀 회의
+            우유 사기
+        """.trimIndent(), zone)
+        assertEquals(listOf(CaptureType.EVENT, CaptureType.TASK), items.map { it.type })
+    }
 }

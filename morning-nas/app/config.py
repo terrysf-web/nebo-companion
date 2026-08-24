@@ -68,6 +68,8 @@ class Config:
     port: int
 
     lang: str
+    brief_pdf: bool
+    planner_enabled: bool
     planner_page: str
     planner_start_hour: int
     planner_end_hour: int
@@ -129,6 +131,8 @@ def load_config() -> Config:
         mail_limit=_int("MAIL_LIMIT", 12),
         port=_int("PORT", 9000),
         lang=(os.getenv("LANG_OUT") or "en").strip().lower(),
+        brief_pdf=_flag("BRIEF_PDF", True),
+        planner_enabled=_flag("PLANNER_ENABLED", False),
         planner_page=(os.getenv("PLANNER_PAGE") or "tablet").strip().lower(),
         planner_start_hour=_int("PLANNER_START_HOUR", 6),
         planner_end_hour=_int("PLANNER_END_HOUR", 22),

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from . import nebotext
 from .brief import Brief
 from .config import Config
 
@@ -24,7 +25,9 @@ def environment() -> Environment:
 
 
 def to_html(cfg: Config, brief: Brief) -> str:
-    return _env.get_template("brief.html").render(brief=brief, cfg=cfg)
+    return _env.get_template("brief.html").render(
+        brief=brief, cfg=cfg, nebo_text=nebotext.to_text(cfg, brief)
+    )
 
 
 def write_html(cfg: Config, brief: Brief, path: Path) -> Path:

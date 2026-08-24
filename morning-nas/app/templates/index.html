@@ -27,7 +27,10 @@
     {% for day in days %}
     <tr>
       <td><a href="/brief/{{ day }}">{{ day }}</a></td>
-      <td class="r"><a href="/brief/{{ day }}.pdf">PDF</a></td>
+      <td class="r">
+        <a href="/brief/{{ day }}.txt">Nebo text</a>
+        {% if cfg.brief_pdf %} · <a href="/brief/{{ day }}.pdf">PDF</a>{% endif %}
+      </td>
     </tr>
     {% endfor %}
   </table>

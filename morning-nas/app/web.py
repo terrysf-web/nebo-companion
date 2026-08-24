@@ -12,9 +12,15 @@ import threading
 from datetime import date
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+)
 
-from . import jobs, render, store
+from . import jobs, nebotext, render, store
 from .config import Config, load_config
 
 log = logging.getLogger(__name__)
@@ -54,6 +60,17 @@ def create_app(cfg: Config | None = None) -> FastAPI:
             problems=_startup_problems(cfg),
         )
         return HTMLResponse(page)
+
+    @app.get("/brief/{day}.txt", response_class=PlainTextResponse)
+    def brief_text(day: str) -> PlainTextResponse:
+        """The paste-into-Nebo version."""
+        path = store.text_path(cfg, day)
+        if path.exists():
+            return PlainTextResponse(path.read_text(encoding="utf-8"))
+        stored = store.load(cfg, day)
+        if stored is None:
+            raise HTTPException(status_code=404, detail=f"no brief for {day}")
+        return PlainTextResponse(nebotext.to_text(cfg, stored))
 
     @app.get("/brief/{day}.pdf")
     def brief_pdf(day: str) -> FileResponse:

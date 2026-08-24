@@ -23,6 +23,11 @@ def html_path(cfg: Config, day: date | str) -> Path:
     return cfg.brief_dir / f"{day}.html"
 
 
+def text_path(cfg: Config, day: date | str) -> Path:
+    day = day if isinstance(day, str) else day.isoformat()
+    return cfg.brief_dir / f"{day}.txt"
+
+
 def pdf_path(cfg: Config, day: date | str) -> Path:
     day = day if isinstance(day, str) else day.isoformat()
     return cfg.brief_dir / f"{day}.pdf"

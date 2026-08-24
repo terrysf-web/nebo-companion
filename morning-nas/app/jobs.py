@@ -10,7 +10,7 @@ import logging
 from datetime import date, datetime, time
 from pathlib import Path
 
-from . import google_api, nextcloud, render, store
+from . import google_api, nebotext, nextcloud, render, store
 from .brief import Brief, build
 from .briefpdf import build_brief_pdf
 from .config import Config
@@ -23,10 +23,18 @@ def run_brief(cfg: Config, when: date | None = None, upload: bool = True) -> Bri
     brief = build(cfg, when)
     store.save(cfg, brief)
     html = render.write_html(cfg, brief, store.html_path(cfg, brief.day))
-    pdf = build_brief_pdf(cfg, brief, store.pdf_path(cfg, brief.day))
+
+    # The Nebo path: text to paste into a Nebo page and write under.
+    text = store.text_path(cfg, brief.day)
+    text.parent.mkdir(parents=True, exist_ok=True)
+    text.write_text(nebotext.to_text(cfg, brief), encoding="utf-8")
+
+    paths = [html, text]
+    if cfg.brief_pdf:
+        paths.append(build_brief_pdf(cfg, brief, store.pdf_path(cfg, brief.day)))
 
     if upload:
-        for path in (html, pdf):
+        for path in paths:
             nextcloud.try_upload(cfg, path, subdir="briefs")
 
     for problem in brief.problems:
