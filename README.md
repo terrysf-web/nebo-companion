@@ -45,9 +45,16 @@ Nextcloud에 올립니다. 아침 흐름은 이렇습니다.
 
 ## GitHub에서 APK 만들기
 
-이 폴더의 내용 전체를 GitHub 저장소 루트에 올리고 `main` 브랜치에 커밋하면 **Actions → Build Android APK**가 자동 실행됩니다. 완료 후 실행 결과의 **Artifacts**에서 `nebo-companion-debug-apk`를 내려받아 압축을 풀면 `app-debug.apk`가 있습니다.
+`main` 또는 `claude/*` 브랜치에 커밋하면 **Actions → Build Android APK**가 자동 실행됩니다.
+수동 실행은 **Actions → Build Android APK → Run workflow**입니다.
 
-수동 실행은 **Actions → Build Android APK → Run workflow**를 누르면 됩니다.
+완료되면 두 곳에 APK가 올라갑니다.
+
+- **Releases** — `nebo-companion-<버전>-build<번호>.apk` 파일이 그대로 붙습니다.
+  태블릿에서 이 페이지를 열고 파일을 누르면 바로 설치됩니다. (처음 한 번은
+  “이 출처의 앱 설치 허용”을 켜야 합니다.)
+- **Artifacts** — 같은 파일의 zip. GitHub 로그인이 필요하고 압축을 풀어야 하므로
+  PC에서 받을 때만 편합니다.
 
 ## 로컬 빌드
 

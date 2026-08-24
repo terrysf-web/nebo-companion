@@ -2,11 +2,14 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'claude/**' ]
   workflow_dispatch:
 
+# Needed to attach the APK to a release. Actions artifacts are zipped and
+# require a signed-in GitHub session, which is painful on a tablet; a release
+# asset is a plain .apk anyone with the link can download and install.
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -31,10 +34,38 @@ jobs:
       - name: Run tests and build debug APK
         run: gradle testDebugUnitTest assembleDebug --stacktrace
 
+      - name: Name the APK
+        id: apk
+        run: |
+          version=$(grep -m1 'versionName' app/build.gradle.kts | cut -d'"' -f2)
+          file="nebo-companion-${version}-build${{ github.run_number }}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$file"
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: nebo-companion-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ steps.apk.outputs.file }}
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish the APK as a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="apk-build${{ github.run_number }}"
+          gh release create "$tag" "${{ steps.apk.outputs.file }}" \
+            --target "$GITHUB_SHA" \
+            --title "Nebo Companion ${{ steps.apk.outputs.version }} (build ${{ github.run_number }})" \
+            --notes "Debug build of \`${{ github.ref_name }}\` at \`${GITHUB_SHA:0:7}\`.
+
+          Open this page on the tablet and tap the .apk to install. Android will
+          ask to allow installing from this source the first time." \
+            --prerelease
+
+      - name: Where to get it
+        run: |
+          echo "APK: ${{ steps.apk.outputs.file }}"
+          echo "Direct download: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/apk-build${{ github.run_number }}"
