@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}{{ brief.title() }} — morning brief{% endblock %}
+{% block body %}
+<header class="top">
+  <div>
+    <h1>{{ brief.title() }}</h1>
+    <div class="sub">{{ brief.generated_at.replace("T", " ")[:16] }}{% if brief.weather %} · {{ brief.weather }}{% endif %}</div>
+  </div>
+  <div class="btns">
+    <a class="btn" href="/brief/{{ brief.day }}.pdf">PDF for the tablet</a>
+    <a class="btn" href="/">All briefs</a>
+  </div>
+</header>
+
+{% if brief.headline %}
+<div class="card"><p class="headline">{{ brief.headline }}</p></div>
+{% endif %}
+
+{% if brief.priorities %}
+<div class="card">
+  <h2>Priorities</h2>
+  <ul>{% for item in brief.priorities %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+{% if brief.timeline %}
+<div class="card">
+  <h2>Today</h2>
+  {% for row in brief.timeline %}
+  <div class="row"><div class="t">{{ row.time or "—" }}</div><div>{{ row.what }}</div></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if brief.watch %}
+<div class="card">
+  <h2>Watch</h2>
+  <ul>{% for item in brief.watch %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+{% if brief.today %}
+<div class="card">
+  <h2>Calendar</h2>
+  <ul>{% for item in brief.today %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+{% if brief.upcoming %}
+<div class="card">
+  <h2>Next few days</h2>
+  <ul>{% for item in brief.upcoming %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+{% if brief.tasks %}
+<div class="card">
+  <h2>Open tasks</h2>
+  <ul>{% for item in brief.tasks %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+{% if brief.mail %}
+<div class="card">
+  <h2>Unread mail</h2>
+  <table>
+    {% for m in brief.mail %}
+    <tr><td>{{ m.subject }}</td><td class="r">{{ m["from"] }} · {{ m.account }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% if brief.closing %}
+<p class="muted">{{ brief.closing }}</p>
+{% endif %}
+
+{% if brief.problems %}
+<div class="card warn">
+  <h2>Needs attention</h2>
+  <ul>{% for item in brief.problems %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% endblock %}

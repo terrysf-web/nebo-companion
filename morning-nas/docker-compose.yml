@@ -1,0 +1,18 @@
+services:
+  morning:
+    build: .
+    container_name: morning
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Must match the file names in tokens/
+      # personal.json, work.json  ->  ACCOUNTS=personal,work
+      ACCOUNTS: "personal,work"
+      ACCOUNT_LABEL_PERSONAL: "Personal"
+      ACCOUNT_LABEL_WORK: "Work"
+      TZ: "${TZ:-Asia/Seoul}"
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./tokens:/app/tokens
+      - ./data:/app/data

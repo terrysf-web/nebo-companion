@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Morning{% endblock %}
+{% block body %}
+<header class="top">
+  <div>
+    <h1>Morning</h1>
+    <div class="sub">
+      Brief every day at {{ "%02d:%02d"|format(cfg.brief_hour, cfg.brief_minute) }},
+      planner on the 1st at {{ "%02d:%02d"|format(cfg.planner_hour, cfg.planner_minute) }}
+      · {{ cfg.tz_name }}
+    </div>
+  </div>
+  <div class="btns">
+    <form method="post" action="/run"><button class="btn" type="submit">Run brief now</button></form>
+    <form method="post" action="/planner"><button class="btn" type="submit">Build planner</button></form>
+  </div>
+</header>
+
+{% if running %}
+<div class="card"><span class="muted">Working on it — reload in a moment.</span></div>
+{% endif %}
+
+<div class="card">
+  <h2>Briefs</h2>
+  {% if days %}
+  <table>
+    {% for day in days %}
+    <tr>
+      <td><a href="/brief/{{ day }}">{{ day }}</a></td>
+      <td class="r"><a href="/brief/{{ day }}.pdf">PDF</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">Nothing yet. Press <em>Run brief now</em>, or wait for tomorrow morning.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Planners</h2>
+  {% if planners %}
+  <table>
+    {% for name in planners %}
+    <tr><td><a href="/planner/{{ name }}">{{ name }}</a></td><td class="r">PDF</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No planner yet. Press <em>Build planner</em> — it covers next month.</p>
+  {% endif %}
+</div>
+
+{% if problems %}
+<div class="card warn">
+  <h2>Needs attention</h2>
+  <ul>{% for item in problems %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<p class="muted">
+  Files also land in Nextcloud at <code>{{ cfg.nc_dir }}/</code>
+  {% if not cfg.nc_upload %}(upload disabled){% endif %}.
+  Everything here is downloadable even when that upload fails.
+</p>
+{% endblock %}

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Morning{% endblock %}</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --card: #ffffff; --ink: #1c1c1a; --soft: #6b6b66;
+    --line: #e3e2dd; --accent: #1c1c1a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17171a; --card: #1f1f23; --ink: #eceae4; --soft: #9c9a93;
+      --line: #34343a; --accent: #eceae4;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 ui-sans-serif, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", "Noto Sans KR", sans-serif;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+  header.top { display: flex; align-items: baseline; justify-content: space-between;
+               gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  h1 { font-size: 28px; margin: 0; letter-spacing: -0.01em; }
+  .sub { color: var(--soft); font-size: 14px; }
+  a { color: inherit; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+          padding: 20px 22px; margin-bottom: 16px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+       color: var(--soft); margin: 0 0 12px; font-weight: 600; }
+  ul { margin: 0; padding-left: 18px; }
+  li { margin-bottom: 6px; }
+  .headline { font-size: 20px; line-height: 1.45; margin: 0 0 4px; }
+  .row { display: flex; gap: 14px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row .t { flex: 0 0 60px; color: var(--soft); font-variant-numeric: tabular-nums; }
+  .btn { display: inline-block; border: 1px solid var(--line); background: var(--card);
+         color: var(--ink); border-radius: 8px; padding: 8px 14px; font-size: 14px;
+         text-decoration: none; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .muted { color: var(--soft); font-size: 14px; }
+  .warn { border-color: #b9793f; }
+  .warn h2 { color: #b9793f; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  td { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  td.r { text-align: right; color: var(--soft); font-size: 14px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+{% block body %}{% endblock %}
+</div>
+</body>
+</html>
