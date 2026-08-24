@@ -63,10 +63,16 @@ def next_month(today: date) -> date:
 
 
 class Planner(Sheet):
-    def __init__(self, cfg: Config, events: dict[date, list[str]] | None = None):
+    def __init__(
+        self,
+        cfg: Config,
+        events: dict[date, list[str]] | None = None,
+        months: int | None = None,
+    ):
         super().__init__(cfg.planner_page)
         self.cfg = cfg
         self.events = events or {}
+        self.month_count = max(months or cfg.planner_months, 1)
         self.first_weekday = 0 if cfg.planner_week_start != "sun" else 6
         self.weekday_names = WEEKDAYS_MON if self.first_weekday == 0 else WEEKDAYS_SUN
         self.cal = calendar.Calendar(firstweekday=self.first_weekday)
@@ -89,32 +95,40 @@ class Planner(Sheet):
         return self.w - self.margin - (self.tab_width + 10 if self.tab_width else 0)
 
     def month_tabs(self, c: pdfcanvas.Canvas, current: date | None) -> None:
-        """Vertical JAN..DEC tabs down the right edge, like a tabbed binder."""
+        """One tab per month in the file, down the right edge like a binder.
+
+        A twelve-month file usually starts mid-year, so the tabs follow the
+        months this file actually contains rather than JAN..DEC of one year —
+        otherwise half of them would point nowhere.
+        """
         if not self.tab_width:
             return
-        available = {(m.year, m.month): m for m, _ in self.months}
+        months = [m for m, _ in self.months]
+        spans_years = len({m.year for m in months}) > 1
         top = self.h - self.margin
-        height = (top - self.margin) / 12
+        height = min((top - self.margin) / len(months), 56.0)
         x = self.w - self.margin - self.tab_width
-        year = self.months[0][0].year
-        for i in range(12):
+
+        for i, month in enumerate(months):
             y = top - height * (i + 1)
-            target = available.get((year, i + 1))
-            active = bool(current and current.month == i + 1 and current.year == year)
+            active = bool(current and current.year == month.year and current.month == month.month)
             c.setStrokeColor(LINE)
             c.setLineWidth(0.8)
             if active:
                 c.setFillColor(FAINT)
-                c.rect(x, y, self.tab_width, height, stroke=1, fill=1)
-            else:
-                c.rect(x, y, self.tab_width, height, stroke=1, fill=0)
+            c.rect(x, y, self.tab_width, height, stroke=1, fill=1 if active else 0)
+            label_y = y + height / 2 - (0 if spans_years else 3)
             self.text(
-                c, x + self.tab_width / 2, y + height / 2 - 3,
-                MONTH_SHORT[i], size=7.5, bold=active,
-                color=INK if target else GRAY, align="center",
+                c, x + self.tab_width / 2, label_y,
+                MONTH_SHORT[month.month - 1], size=7.5, bold=active,
+                color=INK, align="center",
             )
-            if target is not None:
-                self.link(c, month_key(target), (x, y, x + self.tab_width, y + height))
+            if spans_years:
+                self.text(
+                    c, x + self.tab_width / 2, label_y - 8,
+                    f"'{month.year % 100:02d}", size=5.5, color=GRAY, align="center",
+                )
+            self.link(c, month_key(month), (x, y, x + self.tab_width, y + height))
 
     def section_tabs(
         self,
@@ -173,72 +187,73 @@ class Planner(Sheet):
     def cover_page(self, c: pdfcanvas.Canvas) -> None:
         c.setPageSize((self.w, self.h))
         c.bookmarkPage(COVER)
-        first = self.months[0][0]
-        last = self.months[-1][0]
-        span = (
-            MONTH_NAMES[first.month - 1]
-            if first == last
-            else f"{MONTH_NAMES[first.month - 1]} – {MONTH_NAMES[last.month - 1]}"
-        )
+        months = [m for m, _ in self.months]
+        first, last = months[0], months[-1]
 
         c.setStrokeColor(LINE)
         c.setLineWidth(1.2)
         c.rect(self.margin, self.margin, self.w - self.margin * 2, self.h - self.margin * 2)
 
         cx = self.w / 2
-        self.text(c, cx, self.h * 0.66, str(first.year), size=64, bold=True, align="center")
+        title = str(first.year) if first.year == last.year else f"{first.year}–{last.year}"
+        self.text(c, cx, self.h * 0.66, title, size=64, bold=True, align="center")
         self.text(c, cx, self.h * 0.60, "PLANNER", size=16, color=GRAY, align="center")
-        self.text(c, cx, self.h * 0.56, span, size=11, color=GRAY, align="center")
+        self.text(c, cx, self.h * 0.56, self.span_label(), size=11, color=GRAY, align="center")
 
         c.setStrokeColor(LINE)
         c.line(cx - 90, self.h * 0.53, cx + 90, self.h * 0.53)
 
-        available = {(m.year, m.month) for m, _ in self.months}
         cols, width, gap, height = 6, 86.0, 10.0, 30.0
+        rows = -(-len(months) // cols)
         grid_w = cols * width + (cols - 1) * gap
         x0 = cx - grid_w / 2
         y = self.h * 0.44
-        for i in range(12):
+        for i, month in enumerate(months):
             col, row = i % cols, i // cols
-            target = next(
-                (m for m, _ in self.months if m.month == i + 1 and m.year == first.year), None
-            )
             self.button(
                 c, x0 + col * (width + gap), y - row * (height + gap),
-                MONTH_NAMES[i], month_key(target) if target else None,
-                width=width, height=height,
-                active=(first.year, i + 1) in available,
+                MONTH_NAMES[month.month - 1], month_key(month),
+                width=width, height=height, active=True,
             )
-        y -= (height + gap) * 2 + 18
-        self.button(c, cx - 150, y, "Year overview", YEAR, width=140, height=30)
-        self.button(c, cx + 10, y, "Notes & meetings", NOTES if self.note_count else None,
-                    width=140, height=30)
+        y -= (height + gap) * rows + 18
+        self.button(c, cx - 150, y, "Year overview", YEAR, width=140, height=30, active=True)
+        self.button(
+            c, cx + 10, y, "Notes & meetings", NOTES if self.note_count else None,
+            width=140, height=30, active=bool(self.note_count),
+        )
         c.showPage()
+
+    def span_label(self) -> str:
+        first, last = self.months[0][0], self.months[-1][0]
+        if first == last:
+            return f"{MONTH_NAMES[first.month - 1]} {first.year}"
+        left = MONTH_NAMES[first.month - 1]
+        if first.year != last.year:
+            left += f" {first.year}"
+        return f"{left} – {MONTH_NAMES[last.month - 1]} {last.year}"
 
     def year_page(self, c: pdfcanvas.Canvas) -> None:
         c.setPageSize((self.w, self.h))
         c.bookmarkPage(YEAR)
-        year = self.months[0][0].year
-        top = self.page_frame(c, str(year), "Tap a month to open it", "year")
+        months = [m for m, _ in self.months]
+        top = self.page_frame(c, self.span_label(), "Tap a month to open it", "year")
 
-        cols, rows = 4, 3
+        cols = 4 if len(months) >= 8 else 3 if len(months) >= 5 else max(len(months), 1)
+        rows = max(-(-len(months) // cols), 1)
         gap = 20.0
         cell_w = (self.right - self.margin - gap * (cols - 1)) / cols
-        cell_h = (top - self.margin - gap * (rows - 1)) / rows
-        available = {(m.year, m.month): m for m, _ in self.months}
+        cell_h = min((top - self.margin - gap * (rows - 1)) / rows, 260.0)
 
-        for i in range(12):
+        for i, month in enumerate(months):
             col, row = i % cols, i // cols
             x = self.margin + col * (cell_w + gap)
             y = top - cell_h - row * (cell_h + gap)
-            target = available.get((year, i + 1))
-            self.text(
-                c, x, y + cell_h - 12, MONTH_NAMES[i], size=11, bold=True,
-                color=INK if target else GRAY,
-            )
-            if target is not None:
-                self.link(c, month_key(target), (x, y, x + cell_w, y + cell_h))
-            self._mini_month(c, x, y + cell_h - 26, cell_w, cell_h - 30, date(year, i + 1, 1))
+            name = MONTH_NAMES[month.month - 1]
+            if len({m.year for m in months}) > 1:
+                name += f" {month.year}"
+            self.text(c, x, y + cell_h - 12, name, size=11, bold=True)
+            self.link(c, month_key(month), (x, y, x + cell_w, y + cell_h))
+            self._mini_month(c, x, y + cell_h - 26, cell_w, cell_h - 30, month)
         c.showPage()
 
     def _mini_month(
@@ -513,7 +528,7 @@ class Planner(Sheet):
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         month = first_month
-        for _ in range(max(self.cfg.planner_months, 1)):
+        for _ in range(self.month_count):
             weeks = self.cal.monthdatescalendar(month.year, month.month)
             self.months.append((month, weeks))
             self.days.update(d for w in weeks for d in w if d.month == month.month)
@@ -522,7 +537,7 @@ class Planner(Sheet):
         self.note_count = max(self.cfg.planner_meeting_pages, 0)
 
         c = pdfcanvas.Canvas(str(out_path), pagesize=(self.w, self.h))
-        c.setTitle(f"{first_month.year} planner — {MONTH_NAMES[first_month.month - 1]}")
+        c.setTitle(f"Planner — {self.span_label()}")
         c.setAuthor("morning")
 
         self.cover_page(c)
@@ -543,11 +558,25 @@ class Planner(Sheet):
         return out_path
 
 
+def months_between(first: date, last: date) -> int:
+    """Inclusive month count, so 'today through the end of December' is one number."""
+    return (last.year - first.year) * 12 + (last.month - first.month) + 1
+
+
 def build_planner(
     cfg: Config,
     month: date | None = None,
     events: dict[date, list[str]] | None = None,
+    months: int | None = None,
 ) -> Path:
     month = (month or next_month(date.today())).replace(day=1)
-    out = cfg.planner_dir / f"planner-{month.year}-{month.month:02d}.pdf"
-    return Planner(cfg, events).build(month, out)
+    count = max(months or cfg.planner_months, 1)
+    last = month
+    for _ in range(count - 1):
+        last = next_month(last)
+
+    name = f"planner-{month.year}-{month.month:02d}"
+    if count > 1:
+        name += f"-to-{last.year}-{last.month:02d}"
+    out = cfg.planner_dir / f"{name}.pdf"
+    return Planner(cfg, events, months=count).build(month, out)

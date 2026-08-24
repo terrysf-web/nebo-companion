@@ -35,20 +35,27 @@ def run_brief(cfg: Config, when: date | None = None, upload: bool = True) -> Bri
 
 
 def run_planner(
-    cfg: Config, month: date | None = None, upload: bool = True
+    cfg: Config,
+    month: date | None = None,
+    upload: bool = True,
+    months: int | None = None,
 ) -> Path:
-    month = month or next_month(date.today())
-    events = _month_events(cfg, month)
-    path = build_planner(cfg, month, events)
+    month = (month or next_month(date.today())).replace(day=1)
+    count = max(months or cfg.planner_months, 1)
+    events = _month_events(cfg, month, count)
+    path = build_planner(cfg, month, events, months=count)
     if upload:
         nextcloud.try_upload(cfg, path, subdir="planners")
     return path
 
 
-def _month_events(cfg: Config, month: date) -> dict[date, list[str]]:
-    """Print known calendar entries into the month grid — best effort only."""
+def _month_events(cfg: Config, month: date, months: int = 1) -> dict[date, list[str]]:
+    """Print known calendar entries into the month grids — best effort only."""
     start = datetime.combine(month, time.min, tzinfo=cfg.tz)
-    span = (next_month(month) - month).days + 7
+    last = month
+    for _ in range(max(months, 1)):
+        last = next_month(last)
+    span = (last - month).days + 7
     out: dict[date, list[str]] = {}
     try:
         accounts = google_api.collect_events_only(cfg, start, span)

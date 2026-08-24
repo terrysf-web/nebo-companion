@@ -66,22 +66,35 @@ The page lists every brief and planner, with a **Run brief now** and a
 ## Planner PDF
 
 ```bash
+# next month only
 docker compose run --rm --entrypoint python morning main.py --planner-only
+
+# today's month through the end of December, in one file
+docker compose run --rm --entrypoint python morning main.py \
+  --planner-only --date 2026-08-01 --through 2026-12
+
+# or a fixed number of months
+docker compose run --rm --entrypoint python morning main.py \
+  --planner-only --months 12
 ```
+
+A multi-month file gets tabs for exactly the months it contains — a span that
+crosses a new year is labelled with the year on each tab.
 
 The planner works the way the popular digital planners do:
 
 | Page | What's on it |
 |---|---|
-| Cover | year, and a tap target for every month |
-| Year | 12 mini calendars, every date links to its day page |
+| Cover | the span, and a tap target for every month in the file |
+| Year | a mini calendar per month, every date links to its day page |
 | Month | grid with your real calendar entries printed in, goals, notes |
 | Week | seven columns, weekly focus, habit tracker |
 | Day | hourly schedule, Top 3, to-dos, notes, link to the meeting log |
 | Notes | numbered index → one meeting-note page each (discussion, decisions, action items) |
 
 Navigation is on every page: **Year / Month / Week / Day / Notes** top right,
-and JAN–DEC tabs down the right edge when the file covers more than one month.
+and one month tab per month down the right edge when the file covers more than
+one month.
 
 ## Daily brief PDF
 
@@ -95,6 +108,8 @@ next to the brief instead of copying it somewhere else.
 ```bash
 python main.py                    # today's brief: HTML + PDF, upload
 python main.py --planner-only     # next month's planner
+python main.py --planner-only --months 12
+python main.py --planner-only --date 2026-08-01 --through 2026-12
 python main.py --date 2026-09-04  # a specific day
 python main.py --no-upload        # skip Nextcloud
 python main.py --check            # check the setup
@@ -115,7 +130,7 @@ Everything lives in `.env` (see `.env.example`). The ones that matter most:
 | `LANG_OUT` | `en` or `ko` — language of the brief |
 | `BRIEF_HOUR` / `BRIEF_MINUTE` | when the daily brief runs |
 | `PLANNER_PAGE` | `tablet` (5:3), `a4`, `a5` |
-| `PLANNER_MONTHS` | months per planner file; 12 gives a full year with month tabs |
+| `PLANNER_MONTHS` | months per planner file for the scheduled monthly build; `--months` / `--through` override it for a one-off |
 | `PLANNER_MEETING_PAGES` | how many meeting-note pages to append |
 | `PLANNER_HABITS` | habit tracker rows on the weekly page |
 

@@ -2,6 +2,8 @@
 
     python main.py                    build today's brief (HTML + PDF), upload
     python main.py --planner-only     build next month's planner PDF
+    python main.py --planner-only --date 2026-08-01 --through 2026-12
+                                      August through December, one file
     python main.py --date 2026-09-04  build the brief for a specific day
     python main.py --no-upload        skip Nextcloud
     python main.py --check            check the setup and the Nextcloud upload
@@ -16,7 +18,7 @@ from datetime import date
 
 from app import jobs, nextcloud, store
 from app.config import load_config
-from app.planner import next_month
+from app.planner import months_between, next_month
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,6 +36,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="only build the brief (the default)")
     parser.add_argument("--date", metavar="YYYY-MM-DD",
                         help="which day to build (brief) or which month (planner)")
+    parser.add_argument("--months", type=int, metavar="N",
+                        help="how many months the planner covers (default PLANNER_MONTHS)")
+    parser.add_argument("--through", metavar="YYYY-MM",
+                        help="build the planner up to and including this month")
     parser.add_argument("--no-upload", action="store_true",
                         help="do not upload to Nextcloud")
     parser.add_argument("--check", action="store_true",
@@ -75,7 +81,15 @@ def main(argv: list[str] | None = None) -> int:
     when = date.fromisoformat(args.date) if args.date else None
 
     if args.planner_only:
-        path = jobs.run_planner(cfg, (when or next_month(date.today())).replace(day=1), upload)
+        first = (when or next_month(date.today())).replace(day=1)
+        months = args.months
+        if args.through:
+            year, month = (int(part) for part in args.through.split("-")[:2])
+            months = months_between(first, date(year, month, 1))
+            if months < 1:
+                print(f"--through {args.through} is before {first:%Y-%m}", file=sys.stderr)
+                return 1
+        path = jobs.run_planner(cfg, first, upload, months=months)
         print(path)
         return 0
 
