@@ -13,6 +13,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.CalendarContract
+import android.provider.DocumentsContract
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -21,14 +22,17 @@ import android.widget.Toast
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
+import java.time.LocalDate
 import java.time.ZoneId
 
 class MainActivity : Activity() {
     private val savePermissionRequest = 701
     private val pickCalendarPermissionRequest = 702
+    private val pickBriefFolderRequest = 703
     private lateinit var noteInput: EditText
     private lateinit var resultView: TextView
     private lateinit var calendarButton: Button
+    private lateinit var briefButton: Button
     private lateinit var calendarTargetView: TextView
     private lateinit var prefs: SharedPreferences
     private val parser = EventParser()
@@ -45,12 +49,15 @@ class MainActivity : Activity() {
         noteInput = findViewById(R.id.noteInput)
         resultView = findViewById(R.id.resultView)
         calendarButton = findViewById(R.id.calendarButton)
+        briefButton = findViewById(R.id.briefButton)
         calendarTargetView = findViewById(R.id.calendarTargetView)
         taskStore = TaskStore(this)
         prefs = getSharedPreferences("settings", MODE_PRIVATE)
 
         findViewById<Button>(R.id.analyzeButton).setOnClickListener { analyze() }
         calendarButton.setOnClickListener { requestPermissionsThenSave() }
+        briefButton.setOnClickListener { openTodaysBrief() }
+        briefButton.setOnLongClickListener { pickBriefFolder(); true }
         calendarTargetView.setOnClickListener { changeCalendarTarget() }
         updateCalendarTargetLabel()
         consumeShared(intent)
@@ -91,8 +98,10 @@ class MainActivity : Activity() {
                     analyze()
                     return
                 }
-                val stream = streamExtra(intent)
-                if (stream != null) recognizeImages(listOf(stream))
+                val stream = streamExtra(intent) ?: return
+                // A shared .txt (a morning brief out of the synced folder, say)
+                // is text, not something to run OCR over.
+                if (looksLikeText(stream)) loadSharedText(stream) else recognizeImages(listOf(stream))
             }
             Intent.ACTION_SEND_MULTIPLE -> {
                 val streams = streamListExtra(intent)
@@ -110,6 +119,106 @@ class MainActivity : Activity() {
     private fun streamListExtra(intent: Intent): List<Uri> =
         (if (Build.VERSION.SDK_INT >= 33) intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
          else intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM))?.filterNotNull().orEmpty()
+
+    // ── 모닝 브리핑 ──────────────────────────────────────────────
+    // 브리핑 서비스가 만든 <오늘날짜>.txt 를 동기화 폴더에서 바로 엽니다.
+    // 폴더 접근은 사용자가 한 번 고른 것만 쓰므로 새 권한이 필요 없고,
+    // 앱은 여전히 인터넷 권한 없이 동작합니다.
+
+    private fun briefFileName(): String = "${LocalDate.now()}.txt"
+
+    private fun pickBriefFolder() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+        try {
+            startActivityForResult(intent, pickBriefFolderRequest)
+        } catch (e: android.content.ActivityNotFoundException) {
+            Toast.makeText(this, R.string.brief_no_picker, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun openTodaysBrief() {
+        val saved = prefs.getString("brief_folder", null)
+        if (saved == null) {
+            pickBriefFolder()
+            return
+        }
+        val file = findInFolder(Uri.parse(saved), briefFileName())
+        if (file == null) {
+            Toast.makeText(this, getString(R.string.brief_not_found, briefFileName()), Toast.LENGTH_LONG).show()
+            return
+        }
+        loadSharedText(file)
+    }
+
+    private fun findInFolder(treeUri: Uri, name: String): Uri? = try {
+        val children = DocumentsContract.buildChildDocumentsUriUsingTree(
+            treeUri, DocumentsContract.getTreeDocumentId(treeUri)
+        )
+        contentResolver.query(
+            children,
+            arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME
+            ),
+            null, null, null
+        )?.use { cursor ->
+            var found: Uri? = null
+            while (found == null && cursor.moveToNext()) {
+                if (cursor.getString(1) == name) {
+                    found = DocumentsContract.buildDocumentUriUsingTree(treeUri, cursor.getString(0))
+                }
+            }
+            found
+        }
+    } catch (e: Exception) {
+        null
+    }
+
+    private fun looksLikeText(uri: Uri): Boolean {
+        val type = contentResolver.getType(uri).orEmpty()
+        if (type.startsWith("text/")) return true
+        if (type.startsWith("image/")) return false
+        return uri.toString().substringAfterLast('.', "").lowercase() in setOf("txt", "md", "text")
+    }
+
+    private fun loadSharedText(uri: Uri) {
+        val text = try {
+            contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+        } catch (e: Exception) {
+            resultView.visibility = View.VISIBLE
+            resultView.text = getString(R.string.brief_read_failed, e.localizedMessage ?: e.javaClass.simpleName)
+            return
+        }
+        if (text.isNullOrBlank()) {
+            Toast.makeText(this, R.string.brief_empty, Toast.LENGTH_LONG).show()
+            return
+        }
+        noteInput.setText(text)
+        // A brief with nothing written under the divider yields no items yet —
+        // that is normal at 06:00, so say so instead of "couldn't find a date".
+        if (captureParser.parse(text).isEmpty()) {
+            resultView.visibility = View.GONE
+            calendarButton.isEnabled = false
+            Toast.makeText(this, R.string.brief_loaded, Toast.LENGTH_LONG).show()
+        } else {
+            analyze()
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != pickBriefFolderRequest || resultCode != RESULT_OK) return
+        val tree = data?.data ?: return
+        try {
+            contentResolver.takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        } catch (e: SecurityException) {
+            Toast.makeText(this, R.string.brief_folder_failed, Toast.LENGTH_LONG).show()
+            return
+        }
+        prefs.edit().putString("brief_folder", tree.toString()).apply()
+        openTodaysBrief()
+    }
 
     private fun recognizeImages(uris: List<Uri>) {
         resultView.visibility = View.VISIBLE

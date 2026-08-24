@@ -41,11 +41,31 @@
             android:textColor="@color/muted"
             android:textSize="16sp" />
 
+        <Button
+            android:id="@+id/briefButton"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:layout_marginTop="22dp"
+            android:background="@drawable/button_background"
+            android:text="@string/open_brief"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/brief_hint"
+            android:textColor="@color/muted"
+            android:textSize="13sp" />
+
         <EditText
             android:id="@+id/noteInput"
             android:layout_width="match_parent"
             android:layout_height="180dp"
-            android:layout_marginTop="26dp"
+            android:layout_marginTop="18dp"
             android:background="@drawable/input_background"
             android:gravity="top|start"
             android:hint="@string/note_hint"

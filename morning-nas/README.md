@@ -18,8 +18,9 @@ even when the upload fails.
 
 ## The Nebo loop
 
-1. Morning: open `http://<ip>:9000`, tap today's brief, tap **Copy for Nebo**
-   (or open the `.txt` from Nextcloud).
+1. Morning: tap **오늘 브리핑 열기** in Nebo Companion — it reads today's
+   `<date>.txt` straight out of the Nextcloud-synced folder you picked once.
+   (Or open `http://<ip>:9000` and tap **Copy for Nebo**.)
 2. Paste it into a Nebo page. The brief sits above a line of dashes; below it
    are hour guides and empty space.
 3. Write the day's plan **below the line**, by hand, in Nebo.
@@ -27,6 +28,9 @@ even when the upload fails.
    what is below the divider, so the brief itself never turns into duplicate
    tasks, and the hour guides are ignored. Events go to Google Calendar,
    to-dos to the app, reminders to the device.
+
+The file name is the other half of the contract: the app looks for
+`<today>.txt`, which is what `store.text_path` writes.
 
 The divider is the contract between the two halves: `DIVIDER` in
 `app/nebotext.py` and `dividerLine` in `CaptureParser.kt`. Change one, change
