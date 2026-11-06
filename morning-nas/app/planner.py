@@ -39,6 +39,8 @@ MONTH_SHORT = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN",
 COVER = "cover"
 YEAR = "year"
 NOTES = "notes"
+GOALS = "goals"
+PROJECTS = "projects"
 
 
 def day_key(d: date) -> str:
@@ -56,6 +58,19 @@ def week_key(d: date) -> str:
 
 def note_key(index: int) -> str:
     return f"note-{index:02d}"
+
+
+def project_key(index: int) -> str:
+    return f"project-{index:02d}"
+
+
+def month_review_key(d: date) -> str:
+    return f"mreview-{d.year}-{d.month:02d}"
+
+
+def week_review_key(d: date) -> str:
+    y, w, _ = d.isocalendar()
+    return f"wreview-{y}-{w:02d}"
 
 
 def next_month(today: date) -> date:
@@ -83,6 +98,7 @@ class Planner(Sheet):
         self.days: set[date] = set()
         self.weeks: set[str] = set()
         self.note_count = 0
+        self.project_count = 0
 
     # -- navigation ---------------------------------------------------
     @property
@@ -137,7 +153,7 @@ class Planner(Sheet):
         month: date | None = None,
         day: date | None = None,
     ) -> None:
-        """Year / Month / Week / Day / Notes, always in the same place."""
+        """The same row of tabs, in the same place, on every page."""
         week_target = week_key(day) if day and week_key(day) in self.weeks else None
         day_target = day_key(day) if day and day in self.days else None
         items = [
@@ -145,9 +161,10 @@ class Planner(Sheet):
             ("Month", month_key(month) if month else None),
             ("Week", week_target),
             ("Day", day_target),
+            ("Projects", PROJECTS if self.project_count else None),
             ("Notes", NOTES if self.note_count else None),
         ]
-        width, gap, height = 54.0, 6.0, 22.0
+        width, gap, height = 50.0, 6.0, 22.0
         y = self.h - self.margin - height
         x = self.right - (width + gap) * len(items) + gap
         for label, key in items:
@@ -216,11 +233,16 @@ class Planner(Sheet):
                 width=width, height=height, active=True,
             )
         y -= (height + gap) * rows + 18
-        self.button(c, cx - 150, y, "Year overview", YEAR, width=140, height=30, active=True)
-        self.button(
-            c, cx + 10, y, "Notes & meetings", NOTES if self.note_count else None,
-            width=140, height=30, active=bool(self.note_count),
-        )
+        row = [("Overview", YEAR, True), ("Goals", GOALS, True)]
+        if self.project_count:
+            row.append(("Projects", PROJECTS, True))
+        if self.note_count:
+            row.append(("Notes", NOTES, True))
+        bw, bgap = 118.0, 10.0
+        x = cx - (len(row) * bw + (len(row) - 1) * bgap) / 2
+        for label, key, on in row:
+            self.button(c, x, y, label, key, width=bw, height=30, active=on)
+            x += bw + bgap
         c.showPage()
 
     def span_label(self) -> str:
@@ -337,7 +359,12 @@ class Planner(Sheet):
         y = self.section(c, sx, top - 11, "Goals this month")
         y = self.checkboxes(c, sx, y, side, 5, 24) - 28
         y = self.section(c, sx, y, "Notes")
-        self.rules(c, sx, y, side, max(int((y - bottom) / 22), 1), 22)
+        link_h = 26.0
+        self.rules(c, sx, y, side, max(int((y - bottom - link_h - 10) / 22), 1), 22)
+        self.button(
+            c, sx, bottom, "Month review  \u2192", month_review_key(month),
+            width=side, height=link_h,
+        )
         c.showPage()
 
     def week_page(self, c: pdfcanvas.Canvas, month: date, week: list[date]) -> None:
@@ -377,7 +404,11 @@ class Planner(Sheet):
         # popular weekly spread has.
         focus_w = usable * 0.36
         y = self.section(c, self.margin, bottom + band, "This week's focus")
-        self.checkboxes(c, self.margin, y, focus_w - 20, 3, 26)
+        y = self.checkboxes(c, self.margin, y, focus_w - 20, 3, 26)
+        self.button(
+            c, self.margin, max(y - 30, bottom), "Week review  \u2192",
+            week_review_key(week[0]), width=focus_w - 20, height=24,
+        )
 
         hx = self.margin + focus_w
         y = self.section(c, hx, bottom + band, "Habits")
@@ -460,6 +491,158 @@ class Planner(Sheet):
             )
         c.showPage()
 
+    def goals_page(self, c: pdfcanvas.Canvas) -> None:
+        """What this whole stretch is for. One page, written once, revisited."""
+        c.bookmarkPage(GOALS)
+        month = self.months[0][0]
+        top = self.page_frame(
+            c, "Goals", self.span_label(), "year", month=month
+        )
+        bottom = self.margin
+        usable = self.right - self.margin
+        gap = 26.0
+        col = (usable - gap * 2) / 3
+
+        y = self.section(c, self.margin, top, "The big rocks")
+        y -= 4
+        for i in range(1, 6):
+            self.text(c, self.margin, y - 11, f"{i}", size=11, bold=True, color=GRAY)
+            c.setStrokeColor(LINE)
+            c.setLineWidth(0.7)
+            c.line(self.margin + 16, y - 14, self.margin + col, y - 14)
+            c.setStrokeColor(FAINT)
+            c.setLineWidth(0.6)
+            c.line(self.margin + 16, y - 32, self.margin + col, y - 32)
+            y -= 46
+
+        mid = self.margin + col + gap
+        y = self.section(c, mid, top, "What done looks like")
+        self.rules(c, mid, y, col, max(int((y - bottom) / 24), 1), 24)
+
+        right = mid + col + gap
+        y = self.section(c, right, top, "Not doing this stretch")
+        y = self.rules(c, right, y, col, 6, 24) - 26
+        y = self.section(c, right, y, "Review dates")
+        self.rules(c, right, y, col, max(int((y - bottom) / 24), 1), 24)
+        c.showPage()
+
+    def month_review_page(self, c: pdfcanvas.Canvas, month: date) -> None:
+        c.bookmarkPage(month_review_key(month))
+        top = self.page_frame(
+            c, f"{MONTH_NAMES[month.month - 1]} review",
+            "Fill this in on the last working day of the month",
+            "month", month=month,
+        )
+        bottom = self.margin
+        usable = self.right - self.margin
+        gap = 24.0
+        col = (usable - gap * 3) / 4
+
+        x = self.margin
+        y = self.section(c, x, top, "What moved")
+        self.rules(c, x, y, col, max(int((y - bottom) / 24), 1), 24)
+
+        x += col + gap
+        y = self.section(c, x, top, "What didn't, and why")
+        self.rules(c, x, y, col, max(int((y - bottom) / 24), 1), 24)
+
+        x += col + gap
+        y = self.section(c, x, top, "Worth keeping")
+        self.rules(c, x, y, col, max(int((y - bottom) / 24), 1), 24)
+
+        x += col + gap
+        y = self.section(c, x, top, "Next month: top 3")
+        y = self.checkboxes(c, x, y, col, 3, 30) - 26
+        y = self.section(c, x, y, "Carry over")
+        self.checkboxes(c, x, y, col, max(min(int((y - bottom) / 26), 6), 1), 26)
+        c.showPage()
+
+    def week_review_page(self, c: pdfcanvas.Canvas, month: date, week: list[date]) -> None:
+        c.bookmarkPage(week_review_key(week[0]))
+        span = f"{week[0].strftime('%b %d')} \u2013 {week[-1].strftime('%b %d, %Y')}"
+        top = self.page_frame(c, "Week review", span, "week", month=month, day=week[0])
+        bottom = self.margin
+        usable = self.right - self.margin
+        gap = 26.0
+        col = (usable - gap * 2) / 3
+
+        x = self.margin
+        y = self.section(c, x, top, "Done")
+        self.rules(c, x, y, col, max(int((y - bottom) / 24), 1), 24)
+
+        x += col + gap
+        y = self.section(c, x, top, "Slipped \u2014 carry or drop")
+        self.checkboxes(c, x, y, col, max(int((y - bottom) / 26), 1), 26)
+
+        x += col + gap
+        y = self.section(c, x, top, "Next week: top 3")
+        y = self.checkboxes(c, x, y, col, 3, 30) - 26
+        y = self.section(c, x, y, "One thing to change")
+        self.rules(c, x, y, col, max(int((y - bottom) / 24), 1), 24)
+        c.showPage()
+
+    def projects_index_page(self, c: pdfcanvas.Canvas) -> None:
+        c.bookmarkPage(PROJECTS)
+        month = self.months[0][0]
+        top = self.page_frame(
+            c, "Projects", "Write the name on the line, tap it to open the page",
+            "projects", month=month,
+        )
+        bottom = self.margin
+        cols = 2
+        gap = 40.0
+        col_w = (self.right - self.margin - gap) / cols
+        per_col = -(-self.project_count // cols)
+        row_h = min(44.0, (top - bottom) / max(per_col, 1))
+
+        for i in range(self.project_count):
+            col, row = i // per_col, i % per_col
+            x = self.margin + col * (col_w + gap)
+            y = top - row_h * (row + 1)
+            self.text(c, x, y + 6, f"{i + 1:02d}", size=9, bold=True, color=GRAY)
+            c.setStrokeColor(LINE)
+            c.setLineWidth(0.6)
+            c.line(x + 24, y + 2, x + col_w, y + 2)
+            self.link(c, project_key(i + 1), (x, y, x + col_w, y + row_h - 6))
+        c.showPage()
+
+    def project_page(self, c: pdfcanvas.Canvas, index: int) -> None:
+        c.bookmarkPage(project_key(index))
+        month = self.months[0][0]
+        top = self.page_frame(c, f"Project {index:02d}", "", "projects", month=month)
+        bottom = self.margin
+        usable = self.right - self.margin
+
+        c.setStrokeColor(LINE)
+        c.setLineWidth(0.6)
+        field_y = top - 6
+        for label, x, width in (
+            ("Project", self.margin, usable * 0.40),
+            ("Owner", self.margin + usable * 0.44, usable * 0.26),
+            ("Due", self.margin + usable * 0.74, usable * 0.26),
+        ):
+            self.text(c, x, field_y, label, size=8.5, color=GRAY)
+            c.line(x + 46, field_y - 2, x + width, field_y - 2)
+
+        body = field_y - 24
+        left_w = usable * 0.46
+        right_x = self.margin + left_w + 26
+        right_w = self.right - right_x
+
+        y = self.section(c, self.margin, body, "Outcome \u2014 what finished looks like")
+        y = self.rules(c, self.margin, y, left_w, 3, 24) - 24
+        y = self.section(c, self.margin, y, "Milestones")
+        self.checkboxes(c, self.margin, y, left_w, max(int((y - bottom) / 26), 1), 26)
+
+        y = self.section(c, right_x, body, "Next actions")
+        space = y - bottom
+        rows = max(min(int(space / 26), 8), 1)
+        y = self.checkboxes(c, right_x, y, right_w, rows, 26) - 24
+        if y > bottom + 40:
+            y = self.section(c, right_x, y, "Blockers & notes")
+            self.rules(c, right_x, y, right_w, max(int((y - bottom) / 22), 1), 22)
+        c.showPage()
+
     def notes_index_page(self, c: pdfcanvas.Canvas) -> None:
         c.bookmarkPage(NOTES)
         month = self.months[0][0]
@@ -535,6 +718,7 @@ class Planner(Sheet):
             self.weeks.update(week_key(w[0]) for w in weeks)
             month = next_month(month)
         self.note_count = max(self.cfg.planner_meeting_pages, 0)
+        self.project_count = max(self.cfg.planner_project_pages, 0)
 
         c = pdfcanvas.Canvas(str(out_path), pagesize=(self.w, self.h))
         c.setTitle(f"Planner — {self.span_label()}")
@@ -542,12 +726,19 @@ class Planner(Sheet):
 
         self.cover_page(c)
         self.year_page(c)
+        self.goals_page(c)
         for month, weeks in self.months:
             self.month_page(c, month, weeks)
+            self.month_review_page(c, month)
             for week in weeks:
                 self.week_page(c, month, week)
+                self.week_review_page(c, month, week)
             for d in [x for w in weeks for x in w if x.month == month.month]:
                 self.day_page(c, month, d)
+        if self.project_count:
+            self.projects_index_page(c)
+            for i in range(1, self.project_count + 1):
+                self.project_page(c, i)
         if self.note_count:
             self.notes_index_page(c)
             for i in range(1, self.note_count + 1):

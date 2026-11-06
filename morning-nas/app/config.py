@@ -76,6 +76,7 @@ class Config:
     planner_week_start: str
     planner_months: int
     planner_meeting_pages: int
+    planner_project_pages: int
     planner_habits: tuple[str, ...]
 
     def label(self, account: str) -> str:
@@ -139,6 +140,7 @@ def load_config() -> Config:
         planner_week_start=(os.getenv("PLANNER_WEEK_START") or "mon").strip().lower(),
         planner_months=_int("PLANNER_MONTHS", 1),
         planner_meeting_pages=_int("PLANNER_MEETING_PAGES", 12),
+        planner_project_pages=_int("PLANNER_PROJECT_PAGES", 12),
         planner_habits=tuple(
             part.strip()
             for part in (

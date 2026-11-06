@@ -115,13 +115,17 @@ The planner works the way the popular digital planners do:
 | Page | What's on it |
 |---|---|
 | Cover | the span, and a tap target for every month in the file |
-| Year | a mini calendar per month, every date links to its day page |
-| Month | grid with your real calendar entries printed in, goals, notes |
-| Week | seven columns, weekly focus, habit tracker |
+| Overview | a mini calendar per month, every date links to its day page |
+| Goals | the big rocks for the whole span, what done looks like, what you are *not* doing, review dates |
+| Month | grid with your real calendar entries printed in, goals, notes, link to the month review |
+| Month review | what moved, what didn't and why, worth keeping, next month's top 3 and carry-over |
+| Week | seven columns, weekly focus, habit tracker, link to the week review |
+| Week review | done, slipped (carry or drop), next week's top 3, one thing to change |
 | Day | hourly schedule, Top 3, to-dos, notes, link to the meeting log |
+| Projects | numbered index → one page each: outcome, milestones, next actions, blockers |
 | Notes | numbered index → one meeting-note page each (discussion, decisions, action items) |
 
-Navigation is on every page: **Year / Month / Week / Day / Notes** top right,
+Navigation is on every page: **Year / Month / Week / Day / Projects / Notes** top right,
 and one month tab per month down the right edge when the file covers more than
 one month.
 
@@ -163,6 +167,7 @@ Everything lives in `.env` (see `.env.example`). The ones that matter most:
 | `PLANNER_PAGE` | `tablet` (5:3), `a4`, `a5` |
 | `PLANNER_MONTHS` | months per planner file for the scheduled monthly build; `--months` / `--through` override it for a one-off |
 | `PLANNER_MEETING_PAGES` | how many meeting-note pages to append |
+| `PLANNER_PROJECT_PAGES` | how many project pages to append (0 removes the section) |
 | `PLANNER_HABITS` | habit tracker rows on the weekly page |
 
 If two-factor authentication is on for the Nextcloud account, `NC_PASS` has to
