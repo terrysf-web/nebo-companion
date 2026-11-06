@@ -23,7 +23,7 @@ from pathlib import Path
 from reportlab.pdfgen import canvas as pdfcanvas
 
 from .config import Config
-from .pdfbase import FAINT, GRAY, INK, LINE, Sheet
+from .pdfbase import FAINT, GRAY, HAIR, INK, LINE, Sheet
 
 log = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ class Planner(Sheet):
         events: dict[date, list[str]] | None = None,
         months: int | None = None,
     ):
-        super().__init__(cfg.planner_page)
+        super().__init__(cfg.planner_page, cfg.planner_style)
         self.cfg = cfg
         self.events = events or {}
         self.month_count = max(months or cfg.planner_months, 1)
@@ -128,11 +128,19 @@ class Planner(Sheet):
         for i, month in enumerate(months):
             y = top - height * (i + 1)
             active = bool(current and current.year == month.year and current.month == month.month)
-            c.setStrokeColor(LINE)
-            c.setLineWidth(0.8)
-            if active:
-                c.setFillColor(FAINT)
-            c.rect(x, y, self.tab_width, height, stroke=1, fill=1 if active else 0)
+            c.setStrokeColor(HAIR if self.minimal else LINE)
+            c.setLineWidth(0.4 if self.minimal else 0.8)
+            if self.minimal:
+                # a single hairline instead of a boxed tab
+                c.line(x, y, x, y + height)
+                if active:
+                    c.setStrokeColor(INK)
+                    c.setLineWidth(1.2)
+                    c.line(x, y + 2, x, y + height - 2)
+            else:
+                if active:
+                    c.setFillColor(FAINT)
+                c.rect(x, y, self.tab_width, height, stroke=1, fill=1 if active else 0)
             label_y = y + height / 2 - (0 if spans_years else 3)
             self.text(
                 c, x + self.tab_width / 2, label_y,
@@ -185,16 +193,19 @@ class Planner(Sheet):
     ) -> float:
         c.setPageSize((self.w, self.h))
         top = self.h - self.margin
-        self.text(c, self.margin, top - 22, title, size=22, bold=True)
+        self.text(
+            c, self.margin, top - 22, title,
+            size=20 if self.minimal else 22, bold=not self.minimal,
+        )
         if sub:
-            self.text(c, self.margin, top - 39, sub, size=9.5, color=GRAY)
+            self.text(c, self.margin, top - 38, sub, size=9, color=GRAY)
         self.section_tabs(c, current, month, day)
         self.month_tabs(c, month)
-        c.setStrokeColor(LINE)
-        c.setLineWidth(1)
+        c.setStrokeColor(HAIR if self.minimal else LINE)
+        c.setLineWidth(0.4 if self.minimal else 1)
         y = top - 50
         c.line(self.margin, y, self.right, y)
-        return y - 10
+        return y - (16 if self.minimal else 10)
 
     def link_day(self, c: pdfcanvas.Canvas, d: date, rect) -> None:
         if d in self.days:
@@ -207,9 +218,13 @@ class Planner(Sheet):
         months = [m for m, _ in self.months]
         first, last = months[0], months[-1]
 
-        c.setStrokeColor(LINE)
-        c.setLineWidth(1.2)
-        c.rect(self.margin, self.margin, self.w - self.margin * 2, self.h - self.margin * 2)
+        if not self.minimal:
+            c.setStrokeColor(LINE)
+            c.setLineWidth(1.2)
+            c.rect(
+                self.margin, self.margin,
+                self.w - self.margin * 2, self.h - self.margin * 2,
+            )
 
         cx = self.w / 2
         title = str(first.year) if first.year == last.year else f"{first.year}–{last.year}"
@@ -321,8 +336,8 @@ class Planner(Sheet):
                 size=8, bold=True, color=GRAY if weekend else INK, align="center",
             )
 
-        c.setStrokeColor(LINE)
-        c.setLineWidth(0.8)
+        c.setStrokeColor(HAIR if self.minimal else LINE)
+        c.setLineWidth(0.4 if self.minimal else 0.8)
         for r in range(len(weeks) + 1):
             y = top - head_h - cell_h * r
             c.line(grid_x, y, grid_x + grid_w, y)
@@ -342,10 +357,10 @@ class Planner(Sheet):
                 )
                 if d == today:
                     c.setStrokeColor(INK)
-                    c.setLineWidth(1.4)
+                    c.setLineWidth(0.7 if self.minimal else 1.4)
                     c.rect(x + 1.5, y + 1.5, cell_w - 3, cell_h - 3, stroke=1, fill=0)
-                    c.setStrokeColor(LINE)
-                    c.setLineWidth(0.8)
+                    c.setStrokeColor(HAIR if self.minimal else LINE)
+                    c.setLineWidth(0.4 if self.minimal else 0.8)
                 if not in_month:
                     continue
                 self.link_day(c, d, (x, y, x + cell_w, y + cell_h))
@@ -360,7 +375,10 @@ class Planner(Sheet):
         y = self.checkboxes(c, sx, y, side, 5, 24) - 28
         y = self.section(c, sx, y, "Notes")
         link_h = 26.0
-        self.rules(c, sx, y, side, max(int((y - bottom - link_h - 10) / 22), 1), 22)
+        if self.minimal:
+            self.dots(c, sx, y - 8, side, y - bottom - link_h - 16, pitch=26)
+        else:
+            self.rules(c, sx, y, side, max(int((y - bottom - link_h - 10) / 22), 1), 22)
         self.button(
             c, sx, bottom, "Month review  \u2192", month_review_key(month),
             width=side, height=link_h,
@@ -397,8 +415,9 @@ class Planner(Sheet):
                 size=9.5, bold=True, color=INK if in_month else GRAY,
             )
             self.link_day(c, d, (x, col_top - head, x + col_w, col_top))
-            rows = int((col_top - head - col_bottom) / 20)
-            self.rules(c, x + 6, col_top - head, col_w - 12, rows, 20)
+            gap = 30.0 if self.minimal else 20.0
+            rows = int((col_top - head - col_bottom) / gap)
+            self.rules(c, x + 6, col_top - head, col_w - 12, rows, gap)
 
         # Bottom band: weekly focus + habit tracker, the two blocks every
         # popular weekly spread has.
@@ -483,7 +502,10 @@ class Planner(Sheet):
         y = self.section(c, notes_x, top, "Notes")
         link_h = 26.0
         floor = bottom + (link_h + 10 if self.note_count else 0)
-        self.rules(c, notes_x, y, notes_w, max(int((y - floor) / 20), 1), 20)
+        if self.minimal:
+            self.dots(c, notes_x, y - 6, notes_w, y - floor - 6, pitch=26)
+        else:
+            self.rules(c, notes_x, y, notes_w, max(int((y - floor) / 20), 1), 20)
         if self.note_count:
             self.button(
                 c, notes_x, bottom, "Meeting notes  →", NOTES,
@@ -696,7 +718,10 @@ class Planner(Sheet):
         right_w = self.right - right_x
 
         y = self.section(c, self.margin, body_top, "Discussion")
-        self.rules(c, self.margin, y, left_w, max(int((y - bottom) / 20), 1), 20)
+        if self.minimal:
+            self.dots(c, self.margin, y - 6, left_w, y - bottom - 6, pitch=26)
+        else:
+            self.rules(c, self.margin, y, left_w, max(int((y - bottom) / 20), 1), 20)
 
         y = self.section(c, right_x, body_top, "Decisions")
         y = self.rules(c, right_x, y, right_w, 5, 20) - 20

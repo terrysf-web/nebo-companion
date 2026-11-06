@@ -71,6 +71,7 @@ class Config:
     brief_pdf: bool
     planner_enabled: bool
     planner_page: str
+    planner_style: str
     planner_start_hour: int
     planner_end_hour: int
     planner_week_start: str
@@ -135,6 +136,7 @@ def load_config() -> Config:
         brief_pdf=_flag("BRIEF_PDF", True),
         planner_enabled=_flag("PLANNER_ENABLED", False),
         planner_page=(os.getenv("PLANNER_PAGE") or "tablet").strip().lower(),
+        planner_style=(os.getenv("PLANNER_STYLE") or "minimal").strip().lower(),
         planner_start_hour=_int("PLANNER_START_HOUR", 6),
         planner_end_hour=_int("PLANNER_END_HOUR", 22),
         planner_week_start=(os.getenv("PLANNER_WEEK_START") or "mon").strip().lower(),

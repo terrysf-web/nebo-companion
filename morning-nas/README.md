@@ -107,6 +107,11 @@ docker compose run --rm --entrypoint python morning main.py \
   --planner-only --months 12
 ```
 
+The default style is deliberately bare — hairline rules, letter-spaced grey
+labels, dot grids instead of lines, and tap targets that are words rather than
+buttons. On a matte screen the page should recede and the handwriting should
+not. `PLANNER_STYLE=classic` brings back the boxed version.
+
 A multi-month file gets tabs for exactly the months it contains — a span that
 crosses a new year is labelled with the year on each tab.
 
@@ -165,6 +170,7 @@ Everything lives in `.env` (see `.env.example`). The ones that matter most:
 | `PLANNER_ENABLED` | build the planner PDF on the 1st (default off) |
 | `BRIEF_HOUR` / `BRIEF_MINUTE` | when the daily brief runs |
 | `PLANNER_PAGE` | `tablet` (5:3), `a4`, `a5` |
+| `PLANNER_STYLE` | `minimal` (default: hairlines, dot grids, no button chrome) or `classic` |
 | `PLANNER_MONTHS` | months per planner file for the scheduled monthly build; `--months` / `--through` override it for a one-off |
 | `PLANNER_MEETING_PAGES` | how many meeting-note pages to append |
 | `PLANNER_PROJECT_PAGES` | how many project pages to append (0 removes the section) |

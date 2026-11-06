@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 
 class BriefSheet(Sheet):
     def __init__(self, cfg: Config):
-        super().__init__(cfg.planner_page)
+        super().__init__(cfg.planner_page, cfg.planner_style)
         self.cfg = cfg
 
     def _bullets(

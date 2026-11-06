@@ -18,6 +18,10 @@ INK = HexColor("#1a1a1a")
 GRAY = HexColor("#8a8a8a")
 LINE = HexColor("#c8c8c8")
 FAINT = HexColor("#e4e4e4")
+# The minimal style is drawn in grey, not black: on a matte screen a hairline
+# at full black still reads as a hard rule and fights the handwriting.
+HAIR = HexColor("#b4b4b4")
+DOT = HexColor("#bdbdbd")
 SUN = HexColor("#b23b3b")
 SAT = HexColor("#3b62b2")
 
@@ -36,10 +40,12 @@ def page_size(name: str) -> tuple[float, float]:
 class Sheet:
     """Canvas wrapper for one kind of PDF."""
 
-    def __init__(self, page: str = "tablet"):
+    def __init__(self, page: str = "tablet", style: str = "minimal"):
         self.font, self.bold = register()
         self.w, self.h = page_size(page)
-        self.margin = round(self.w * 0.035)
+        # The minimal style keeps a wider margin: white space is the point.
+        self.minimal = style != "classic"
+        self.margin = round(self.w * (0.052 if self.minimal else 0.035))
 
     # -- text ---------------------------------------------------
     def text(
@@ -119,37 +125,79 @@ class Sheet:
         width: float,
         rows: int,
         gap: float,
-        color: Color = FAINT,
+        color: Color | None = None,
     ) -> float:
-        c.setStrokeColor(color)
-        c.setLineWidth(0.6)
+        c.setStrokeColor(color or (HAIR if self.minimal else FAINT))
+        c.setLineWidth(0.4 if self.minimal else 0.6)
         y = top
         for _ in range(max(rows, 0)):
             y = y - gap
             c.line(x, y, x + width, y)
         return y
 
+    def dots(
+        self,
+        c: pdfcanvas.Canvas,
+        x: float,
+        top: float,
+        width: float,
+        height: float,
+        pitch: float = 24.0,
+    ) -> None:
+        """A dot grid: guides the hand without drawing a box around it.
+
+        Each dot is a zero-length round-capped segment in one path, not a
+        circle: a full page of circles added megabytes to the file.
+        """
+        if height <= 0 or width <= 0:
+            return
+        c.saveState()
+        c.setStrokeColor(DOT)
+        c.setLineWidth(1.0)
+        c.setLineCap(1)  # round
+        path = c.beginPath()
+        cols = max(int(width / pitch), 1)
+        rows = max(int(height / pitch), 1)
+        for r in range(rows + 1):
+            yy = top - r * pitch
+            for col in range(cols + 1):
+                xx = x + col * pitch
+                path.moveTo(xx, yy)
+                path.lineTo(xx, yy)
+        c.drawPath(path, stroke=1, fill=0)
+        c.restoreState()
+
     def checkboxes(
         self, c: pdfcanvas.Canvas, x: float, top: float, width: float, rows: int, gap: float
     ) -> float:
-        box = min(11.0, gap * 0.55)
+        box = min(10.0, gap * 0.5)
         y = top
         for _ in range(max(rows, 0)):
             y = y - gap
-            c.setStrokeColor(LINE)
-            c.setLineWidth(0.8)
+            c.setStrokeColor(HAIR if self.minimal else LINE)
+            c.setLineWidth(0.4 if self.minimal else 0.8)
             c.rect(x, y + 2, box, box, stroke=1, fill=0)
-            c.setStrokeColor(FAINT)
-            c.setLineWidth(0.6)
-            c.line(x + box + 8, y, x + width, y)
+            c.setStrokeColor(HAIR if self.minimal else FAINT)
+            c.setLineWidth(0.4 if self.minimal else 0.6)
+            c.line(x + box + 10, y, x + width, y)
         return y
 
     def section(
         self, c: pdfcanvas.Canvas, x: float, y: float, title: str, size: float = 11
     ) -> float:
         """Draw a section label; return the y just below it."""
-        self.text(c, x, y - size * 0.2, title, size=size, bold=True)
-        return y - size - 4
+        if not self.minimal:
+            self.text(c, x, y - size * 0.2, title, size=size, bold=True)
+            return y - size - 4
+        small = size * 0.72
+        # Letter-spaced small capitals: the label recedes, the space stays.
+        text = c.beginText(x, y - small * 0.2)
+        text.setFont(self.font, small)
+        text.setFillColor(GRAY)
+        text.setCharSpace(small * 0.14)
+        text.textOut(title.upper())
+        c.drawText(text)
+        return y - small - 10
 
     def header(self, c: pdfcanvas.Canvas, title: str, sub: str = "") -> float:
         top = self.h - self.margin
@@ -179,14 +227,30 @@ class Sheet:
         height: float = 24.0,
         active: bool = False,
     ) -> float:
-        """A tappable rounded button; returns its left x."""
-        c.setStrokeColor(LINE)
-        c.setLineWidth(0.8)
-        c.roundRect(x, y, width, height, 5, stroke=1, fill=0)
-        self.text(
-            c, x + width / 2, y + height / 2 - 3.5, label,
-            size=10, bold=active, color=INK if active else GRAY, align="center",
-        )
+        """A tap target; returns its left x.
+
+        Minimal style draws no pill — just the word, with a short rule under
+        the active one. The link rectangle stays finger-sized either way.
+        """
+        if self.minimal:
+            self.text(
+                c, x + width / 2, y + height / 2 - 3.2, label,
+                size=9, color=INK if active else GRAY, align="center",
+            )
+            if active:
+                c.setStrokeColor(INK)
+                c.setLineWidth(0.7)
+                mid = x + width / 2
+                c.line(mid - width * 0.3, y + height / 2 - 7, mid + width * 0.3,
+                       y + height / 2 - 7)
+        else:
+            c.setStrokeColor(LINE)
+            c.setLineWidth(0.8)
+            c.roundRect(x, y, width, height, 5, stroke=1, fill=0)
+            self.text(
+                c, x + width / 2, y + height / 2 - 3.5, label,
+                size=10, bold=active, color=INK if active else GRAY, align="center",
+            )
         if key:
             self.link(c, key, (x, y, x + width, y + height))
         return x
