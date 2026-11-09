@@ -20,6 +20,7 @@ import logging
 from datetime import date, timedelta
 from pathlib import Path
 
+from reportlab.pdfbase.pdfdoc import PDFName
 from reportlab.pdfgen import canvas as pdfcanvas
 
 from .config import Config
@@ -748,6 +749,14 @@ class Planner(Sheet):
         c = pdfcanvas.Canvas(str(out_path), pagesize=(self.w, self.h))
         c.setTitle(f"Planner — {self.span_label()}")
         c.setAuthor("morning")
+
+        # Ask the reader to behave like a planner rather than a scroll: one
+        # page at a time, scaled to the window. A plain viewer ignores all of
+        # this; a paged reader honours it. (No OpenAction: reportlab writes no
+        # name tree, so a named destination there would point at nothing.)
+        c.setCatalogEntry("PageLayout", PDFName("SinglePage"))
+        c.setCatalogEntry("PageMode", PDFName("UseNone"))
+        c.setViewerPreference("FitWindow", "true")
 
         self.cover_page(c)
         self.year_page(c)
