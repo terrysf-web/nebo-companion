@@ -38,6 +38,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="which day to build (brief) or which month (planner)")
     parser.add_argument("--months", type=int, metavar="N",
                         help="how many months the planner covers (default PLANNER_MONTHS)")
+    parser.add_argument("--notebook", nargs="?", type=int, const=60, metavar="N",
+                        help="build a standalone meeting notebook of N pages (default 60)")
     parser.add_argument("--through", metavar="YYYY-MM",
                         help="build the planner up to and including this month")
     parser.add_argument("--no-upload", action="store_true",
@@ -79,6 +81,15 @@ def main(argv: list[str] | None = None) -> int:
         return check(cfg)
 
     when = date.fromisoformat(args.date) if args.date else None
+
+    if args.notebook:
+        from app.notebook import build_notebook
+
+        path = build_notebook(cfg, args.notebook)
+        if upload:
+            nextcloud.try_upload(cfg, path, subdir="planners")
+        print(path)
+        return 0
 
     if args.planner_only:
         first = (when or next_month(date.today())).replace(day=1)

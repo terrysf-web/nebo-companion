@@ -134,6 +134,18 @@ Navigation is on every page: **Year / Month / Week / Day / Projects / Notes** to
 and one month tab per month down the right edge when the file covers more than
 one month.
 
+## Meeting notebook
+
+```bash
+docker compose run --rm --entrypoint python morning main.py --notebook 60
+```
+
+A standalone file: an index, then that many meeting pages. The planner has
+meeting pages too, but they sit two hundred pages in — nobody flips there on
+the way into a room. Each page is date / who / about, a dotted area to write
+in, and the two columns worth re-reading later: what was decided, and who owes
+what by when.
+
 ## Daily brief PDF
 
 The 06:00 brief is also a page you write on: printed brief down the left,
@@ -150,6 +162,7 @@ python main.py --planner-only --months 12
 python main.py --planner-only --date 2026-08-01 --through 2026-12
 python main.py --date 2026-09-04  # a specific day
 python main.py --no-upload        # skip Nextcloud
+python main.py --notebook 60      # standalone meeting notebook
 python main.py --check            # check the setup
 ```
 
