@@ -134,17 +134,25 @@ Navigation is on every page: **Year / Month / Week / Day / Projects / Notes** to
 and one month tab per month down the right edge when the file covers more than
 one month.
 
-## Meeting notebook
+## Daybook
 
 ```bash
-docker compose run --rm --entrypoint python morning main.py --notebook 60
+docker compose run --rm --entrypoint python morning main.py --daybook 12
 ```
 
-A standalone file: an index, then that many meeting pages. The planner has
-meeting pages too, but they sit two hundred pages in — nobody flips there on
-the way into a room. Each page is date / who / about, a dotted area to write
-in, and the two columns worth re-reading later: what was decided, and who owes
-what by when.
+The file carried into work. Tasks are the point; the schedule and the meeting
+notes sit beside them.
+
+| Page | What's on it |
+|---|---|
+| Index | the weekdays it covers, as month grids; tap a date |
+| Open items | the running list — task, from, due, done. The only place a task is tracked |
+| Day | hours down the left, **Today** (what you took off the list), **Came up today**, notes |
+| Meetings | index, then pages of date / who / about, notes, decided, actions |
+
+One rule makes it work: a task is written on **Open items** and ticked there.
+A day page borrows from that list and is never the record — so nothing is lost
+by not finishing a day, and nothing has to be copied forward.
 
 ## Daily brief PDF
 
@@ -162,7 +170,7 @@ python main.py --planner-only --months 12
 python main.py --planner-only --date 2026-08-01 --through 2026-12
 python main.py --date 2026-09-04  # a specific day
 python main.py --no-upload        # skip Nextcloud
-python main.py --notebook 60      # standalone meeting notebook
+python main.py --daybook 12       # work daybook, 12 weeks
 python main.py --check            # check the setup
 ```
 
