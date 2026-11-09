@@ -240,6 +240,7 @@ class Sheet:
         width: float = 58.0,
         height: float = 24.0,
         active: bool = False,
+        size: float | None = None,
     ) -> float:
         """A tap target; returns its left x.
 
@@ -247,9 +248,10 @@ class Sheet:
         the active one. The link rectangle stays finger-sized either way.
         """
         if self.minimal:
+            pt = size or 9
             self.text(
-                c, x + width / 2, y + height / 2 - 3.2, label,
-                size=9, color=INK if active else GRAY, align="center",
+                c, x + width / 2, y + height / 2 - pt * 0.36, label,
+                size=pt, color=INK if active else GRAY, align="center",
             )
             if active:
                 c.setStrokeColor(INK)
