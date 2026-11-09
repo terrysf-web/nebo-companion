@@ -145,9 +145,9 @@ notes sit beside them.
 
 | Page | What's on it |
 |---|---|
-| Index | the weekdays it covers, as month grids; tap a date |
+| Index | the weekdays it covers, as month grids (`PLANNER_WEEK_START` sets Sunday or Monday); tap a date |
 | Open items | the running list — task, from, due, done. The only place a task is tracked |
-| Day | hours down the left, **Today** (what you took off the list), **Came up today**, notes |
+| Day | hours down the left, **Today** (what you took off the list; `--today-rows`, default 12), **Came up today**, notes |
 | Meetings | index, then pages of date / who / about, notes, decided, actions |
 
 One rule makes it work: a task is written on **Open items** and ticked there.

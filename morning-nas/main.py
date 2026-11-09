@@ -40,6 +40,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="how many months the planner covers (default PLANNER_MONTHS)")
     parser.add_argument("--daybook", nargs="?", type=int, const=12, metavar="WEEKS",
                         help="build the work daybook covering this many weeks (default 12)")
+    parser.add_argument("--today-rows", type=int, default=12, metavar="N",
+                        help="task lines on each day page (default 12)")
     parser.add_argument("--through", metavar="YYYY-MM",
                         help="build the planner up to and including this month")
     parser.add_argument("--no-upload", action="store_true",
@@ -85,7 +87,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.daybook:
         from app.notebook import build_notebook
 
-        path = build_notebook(cfg, weeks=args.daybook, first=when)
+        path = build_notebook(
+            cfg, weeks=args.daybook, first=when, today_rows=args.today_rows
+        )
         if upload:
             nextcloud.try_upload(cfg, path, subdir="planners")
         print(path)

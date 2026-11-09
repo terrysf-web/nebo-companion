@@ -57,6 +57,7 @@ class Daybook(Sheet):
         meetings: int = 30,
         open_pages: int = 4,
         saturdays: bool = False,
+        today_rows: int = 12,
     ):
         super().__init__(cfg.planner_page, cfg.planner_style)
         self.cfg = cfg
@@ -64,6 +65,13 @@ class Daybook(Sheet):
         self.k = self.h / 595.28
         self.meetings = max(meetings, 0)
         self.open_pages = max(open_pages, 1)
+        self.today_rows = max(today_rows, 1)
+
+        # Whose Sunday starts the week is not a detail to a person reading a
+        # month grid: a misplaced column is read wrong every single time.
+        self.first_weekday = 6 if cfg.planner_week_start == "sun" else 0
+        order = self.first_weekday
+        self.weekday_names = WEEKDAYS[order:] + WEEKDAYS[:order]
 
         start = first - timedelta(days=first.weekday())  # that week's Monday
         span = 6 if saturdays else 5
@@ -134,7 +142,7 @@ class Daybook(Sheet):
         cell_w = (self.right - self.margin - gap * (cols - 1)) / cols
         cell_h = min((top - bottom - gap * (rows - 1)) / max(rows, 1), 260 * k)
 
-        cal = calendar.Calendar(firstweekday=0)
+        cal = calendar.Calendar(firstweekday=self.first_weekday)
         for i, month in enumerate(months):
             col, row = i % cols, i // cols
             x = self.margin + col * (cell_w + gap)
@@ -147,7 +155,7 @@ class Daybook(Sheet):
             col_w = cell_w / 7
             row_h = min((cell_h - 28 * k) / (len(weeks) + 1), 26 * k)
             head = y + cell_h - 28 * k
-            for n, name in enumerate(WEEKDAYS):
+            for n, name in enumerate(self.weekday_names):
                 self.text(
                     c, x + col_w * n + col_w / 2, head, name[0],
                     size=7 * k, color=GRAY, align="center",
@@ -242,21 +250,35 @@ class Daybook(Sheet):
         c.setStrokeColor(HAIR)
         c.line(self.margin + gutter, y, self.margin + gutter, bottom)
 
-        # Today: the main event
+        # Today: the main event. A tall page takes one column; a wide one
+        # splits, so the writing lines stay a pen's height apart either way.
         space = top - bottom
+        tall = self.h > self.w
         y = self.section(c, task_x, top, "Today", size=12 * k)
-        gap = 28 * k
-        rows = max(min(int(space * 0.50 / gap), 12), 1)
-        y = self.checkboxes(c, task_x, y, task_w, rows, gap) - 24 * k
+        band = space * (0.54 if tall else 0.50)
+        per_col = self.today_rows if tall else -(-self.today_rows // 2)
+        gap = band / per_col
+        if tall:
+            self.checkboxes(c, task_x, y, task_w, per_col, gap)
+        else:
+            col_gap = 22 * k
+            col_w = (task_w - col_gap) / 2
+            left = self.today_rows - per_col
+            self.checkboxes(c, task_x, y, col_w, per_col, gap)
+            if left > 0:
+                self.checkboxes(
+                    c, task_x + col_w + col_gap, y, col_w, left, gap
+                )
+        y -= band + 22 * k
 
         y = self.section(c, task_x, y, "Came up today", size=12 * k)
         self.text(
             c, self.right, y + 11 * k, "copy to Open items",
             size=7.5 * k, color=GRAY, align="right",
         )
-        gap2 = 26 * k
-        rows2 = max(min(int((y - bottom) * 0.55 / gap2), 6), 1)
-        y = self.checkboxes(c, task_x, y, task_w, rows2, gap2) - 22 * k
+        rows2 = 4
+        gap2 = min((y - bottom) * 0.5 / rows2, 30 * k)
+        y = self.checkboxes(c, task_x, y, task_w, rows2, gap2) - 20 * k
 
         if y - bottom > 50 * k:
             y = self.section(c, task_x, y, "Notes", size=12 * k)
