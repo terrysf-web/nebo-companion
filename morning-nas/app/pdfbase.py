@@ -34,6 +34,20 @@ PAGE_SIZES = {
 
 
 def page_size(name: str) -> tuple[float, float]:
+    """A named size, or "WxH" in points to match a screen exactly.
+
+    Tablet screens differ more than the marketing suggests — 4:3, 16:10 and
+    3:2 all ship as "NXTPAPER" — and a page whose shape does not match the
+    screen can never fill it, however the reader is set up.
+    """
+    if name not in PAGE_SIZES and "x" in name:
+        w, _, h = name.partition("x")
+        try:
+            width, height = float(w), float(h)
+        except ValueError:
+            return PAGE_SIZES["tablet"]
+        if width > 0 and height > 0:
+            return width, height
     return PAGE_SIZES.get(name, PAGE_SIZES["tablet"])
 
 

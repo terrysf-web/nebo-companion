@@ -169,7 +169,7 @@ Everything lives in `.env` (see `.env.example`). The ones that matter most:
 | `BRIEF_PDF` | also write the write-on-it PDF of the brief (default on) |
 | `PLANNER_ENABLED` | build the planner PDF on the 1st (default off) |
 | `BRIEF_HOUR` / `BRIEF_MINUTE` | when the daily brief runs |
-| `PLANNER_PAGE` | `tablet` (5:3), `a4`, `a5` |
+| `PLANNER_PAGE` | `tablet` (5:3), `a4`, `a5`, or `WxH` in points to match a screen exactly (`1200x900` for 4:3, `900x1200` for portrait) |
 | `PLANNER_STYLE` | `minimal` (default: hairlines, dot grids, no button chrome) or `classic` |
 | `PLANNER_MONTHS` | months per planner file for the scheduled monthly build; `--months` / `--through` override it for a one-off |
 | `PLANNER_MEETING_PAGES` | how many meeting-note pages to append |
